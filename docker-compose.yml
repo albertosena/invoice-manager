@@ -1,0 +1,44 @@
+services:
+  invoice-web:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - invoice-api
+
+  invoice-api:
+    build:
+      context: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=invoice-db;Port=5432;Database=invoice_manager;Username=invoice;Password=invoice
+      Extractor__BaseUrl: http://invoice-extractor:8000
+    volumes:
+      - invoice_uploads:/app/uploads
+    depends_on:
+      - invoice-db
+      - invoice-extractor
+
+  invoice-extractor:
+    build:
+      context: ./extractor
+    ports:
+      - "8000:8000"
+
+  invoice-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: invoice_manager
+      POSTGRES_USER: invoice
+      POSTGRES_PASSWORD: invoice
+    ports:
+      - "5432:5432"
+    volumes:
+      - invoice_pgdata:/var/lib/postgresql/data
+
+volumes:
+  invoice_pgdata:
+  invoice_uploads:
