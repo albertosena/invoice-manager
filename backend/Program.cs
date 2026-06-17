@@ -1,20 +1,55 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using Invoice.Api.Data;
 using Invoice.Api.Models;
 using Invoice.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddCors(options =>
 {
+    var configuredOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? [];
+    var allowedOrigins = new[]
+    {
+        "http://localhost:4200",
+        "http://localhost:8080",
+        "http://127.0.0.1:4200",
+        "http://127.0.0.1:8080",
+        "https://invoice.albertosena.com"
+    }.Concat(configuredOrigins).Distinct().ToArray();
+
     options.AddPolicy("frontend", policy =>
-        policy.AllowAnyHeader().AllowAnyMethod().WithOrigins(
-            "http://localhost:4200",
-            "http://localhost:8080",
-            "http://127.0.0.1:4200",
-            "http://127.0.0.1:8080"));
+        policy.AllowAnyHeader().AllowAnyMethod().WithOrigins(allowedOrigins));
 });
+
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "invoice-manager-development-key-change-me";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "invoice-manager";
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtIssuer,
+            IssuerSigningKey = signingKey
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -33,6 +68,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("frontend");
+app.UseAuthentication();
+app.UseAuthorization();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -41,7 +78,58 @@ using (var scope = app.Services.CreateScope())
     await SeedData.EnsureSeededAsync(db);
 }
 
-const string mockUserId = SeedData.MockUserId;
+app.MapPost("/api/auth/register", async (
+    RegisterRequest request,
+    AppDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var email = NormalizeEmail(request.Email);
+    var name = request.Name.Trim();
+    var password = request.Password;
+
+    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email) || password.Length < 6)
+    {
+        return Results.BadRequest(new { Detail = "Informe nome, email e senha com pelo menos 6 caracteres." });
+    }
+
+    if (await db.Users.AnyAsync(user => user.Email == email, cancellationToken))
+    {
+        return Results.Conflict(new { Detail = "Ja existe uma conta com este email." });
+    }
+
+    var user = new User
+    {
+        Name = name,
+        Email = email,
+        PasswordHash = HashPassword(password)
+    };
+
+    db.Users.Add(user);
+    await SeedData.EnsureDefaultCategoriesForUserAsync(db, user.Id, cancellationToken);
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Created("/api/auth/me", CreateAuthResponse(user, jwtIssuer, signingKey));
+});
+
+app.MapPost("/api/auth/login", async (
+    LoginRequest request,
+    AppDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var email = NormalizeEmail(request.Email);
+    var user = await db.Users.FirstOrDefaultAsync(item => item.Email == email, cancellationToken);
+
+    if (user is null || !VerifyPassword(request.Password, user.PasswordHash))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(CreateAuthResponse(user, jwtIssuer, signingKey));
+});
+
+app.MapGet("/api/auth/me", (HttpContext context) =>
+    Results.Ok(new UserResponse(CurrentUserId(context), CurrentUserName(context), CurrentUserEmail(context))))
+    .RequireAuthorization();
 
 app.MapPost("/api/invoices/upload", async (
     IFormFile file,
@@ -49,8 +137,11 @@ app.MapPost("/api/invoices/upload", async (
     ExtractorClient extractor,
     CategorizationService categorization,
     IWebHostEnvironment env,
+    HttpContext context,
     CancellationToken cancellationToken) =>
 {
+    var userId = CurrentUserId(context);
+
     if (file.Length == 0 || !file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
     {
         return Results.BadRequest("Envie uma fatura em PDF.");
@@ -67,24 +158,36 @@ app.MapPost("/api/invoices/upload", async (
         await file.CopyToAsync(stream, cancellationToken);
     }
 
-    var invoice = new Invoice.Api.Models.Invoice
-    {
-        UserId = mockUserId,
-        OriginalFileName = file.FileName,
-        FilePath = filePath,
-        Status = InvoiceStatus.Processing,
-        ReferenceMonth = DateTime.UtcNow.Month,
-        ReferenceYear = DateTime.UtcNow.Year
-    };
-
-    db.Invoices.Add(invoice);
-    await db.SaveChangesAsync(cancellationToken);
-
     try
     {
         var extracted = await extractor.ExtractAsync(filePath, file.FileName, cancellationToken);
-        invoice.BankName = extracted.Bank;
-        invoice.Status = InvoiceStatus.Completed;
+        var duplicateExists = await db.Invoices.AnyAsync(invoice =>
+            invoice.UserId == userId &&
+            invoice.ReferenceMonth == extracted.ReferenceMonth &&
+            invoice.ReferenceYear == extracted.ReferenceYear,
+            cancellationToken);
+
+        if (duplicateExists)
+        {
+            DeleteUploadedFile(env, filePath);
+            return Results.Conflict(new
+            {
+                Detail = $"Ja existe uma fatura importada para {extracted.ReferenceMonth:00}/{extracted.ReferenceYear}."
+            });
+        }
+
+        var invoice = new Invoice.Api.Models.Invoice
+        {
+            UserId = userId,
+            OriginalFileName = file.FileName,
+            FilePath = filePath,
+            Status = InvoiceStatus.Completed,
+            ReferenceMonth = extracted.ReferenceMonth,
+            ReferenceYear = extracted.ReferenceYear,
+            BankName = extracted.Bank
+        };
+
+        db.Invoices.Add(invoice);
 
         var transactions = extracted.Transactions.Select(item =>
         {
@@ -92,7 +195,7 @@ app.MapPost("/api/invoices/upload", async (
             return new Transaction
             {
                 InvoiceId = invoice.Id,
-                UserId = mockUserId,
+                UserId = userId,
                 Date = item.Date,
                 Description = item.Description,
                 NormalizedDescription = normalized,
@@ -102,7 +205,7 @@ app.MapPost("/api/invoices/upload", async (
             };
         }).ToList();
 
-        await categorization.ApplyRulesAsync(mockUserId, transactions, cancellationToken);
+        await categorization.ApplyRulesAsync(userId, transactions, cancellationToken);
         db.Transactions.AddRange(transactions);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -110,14 +213,16 @@ app.MapPost("/api/invoices/upload", async (
     }
     catch (Exception ex)
     {
-        invoice.Status = InvoiceStatus.Failed;
-        await db.SaveChangesAsync(cancellationToken);
+        DeleteUploadedFile(env, filePath);
         return Results.Problem($"Falha ao extrair fatura: {ex.Message}");
     }
-}).DisableAntiforgery();
+}).DisableAntiforgery().RequireAuthorization();
 
-app.MapGet("/api/invoices", async (AppDbContext db, CancellationToken cancellationToken) =>
-    await db.Invoices
+app.MapGet("/api/invoices", async (AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    return await db.Invoices
+        .Where(i => i.UserId == userId)
         .OrderByDescending(i => i.CreatedAt)
         .Select(i => new
         {
@@ -131,12 +236,14 @@ app.MapGet("/api/invoices", async (AppDbContext db, CancellationToken cancellati
             i.CreatedAt,
             TransactionCount = i.Transactions.Count
         })
-        .ToListAsync(cancellationToken));
+        .ToListAsync(cancellationToken);
+}).RequireAuthorization();
 
-app.MapGet("/api/invoices/{id:guid}", async (Guid id, AppDbContext db, CancellationToken cancellationToken) =>
+app.MapGet("/api/invoices/{id:guid}", async (Guid id, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
+    var userId = CurrentUserId(context);
     var invoice = await db.Invoices
-        .Where(i => i.Id == id)
+        .Where(i => i.Id == id && i.UserId == userId)
         .Select(i => new
         {
             i.Id,
@@ -153,11 +260,13 @@ app.MapGet("/api/invoices/{id:guid}", async (Guid id, AppDbContext db, Cancellat
         .FirstOrDefaultAsync(cancellationToken);
 
     return invoice is null ? Results.NotFound() : Results.Ok(invoice);
-});
+}).RequireAuthorization();
 
-app.MapGet("/api/invoices/{id:guid}/transactions", async (Guid id, AppDbContext db, CancellationToken cancellationToken) =>
-    await db.Transactions
-        .Where(t => t.InvoiceId == id)
+app.MapGet("/api/invoices/{id:guid}/transactions", async (Guid id, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    return await db.Transactions
+        .Where(t => t.InvoiceId == id && t.UserId == userId)
         .OrderBy(t => t.CreatedAt)
         .Select(t => new
         {
@@ -171,19 +280,22 @@ app.MapGet("/api/invoices/{id:guid}/transactions", async (Guid id, AppDbContext 
             t.CategoryId,
             CategoryName = t.Category == null ? null : t.Category.Name
         })
-        .ToListAsync(cancellationToken));
+        .ToListAsync(cancellationToken);
+}).RequireAuthorization();
 
 app.MapDelete("/api/invoices/{id:guid}", async (
     Guid id,
     AppDbContext db,
     IWebHostEnvironment env,
+    HttpContext context,
     CancellationToken cancellationToken) =>
 {
-    var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+    var userId = CurrentUserId(context);
+    var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId, cancellationToken);
     if (invoice is null) return Results.NotFound();
 
     await db.Transactions
-        .Where(t => t.InvoiceId == id)
+        .Where(t => t.InvoiceId == id && t.UserId == userId)
         .ExecuteDeleteAsync(cancellationToken);
 
     db.Invoices.Remove(invoice);
@@ -200,30 +312,40 @@ app.MapDelete("/api/invoices/{id:guid}", async (
     }
 
     return Results.NoContent();
-});
+}).RequireAuthorization();
 
 app.MapPatch("/api/transactions/{id:guid}/category", async (
     Guid id,
     UpdateTransactionCategoryRequest request,
     AppDbContext db,
     CategorizationService categorization,
+    HttpContext context,
     CancellationToken cancellationToken) =>
 {
-    var transaction = await db.Transactions.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+    var userId = CurrentUserId(context);
+    var transaction = await db.Transactions.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
     if (transaction is null) return Results.NotFound();
 
-    await categorization.UpdateTransactionCategoryAsync(mockUserId, transaction, request.CategoryId, request.Mode, request.RulePattern, cancellationToken);
+    var categoryExists = await db.Categories.AnyAsync(c => c.Id == request.CategoryId && c.UserId == userId, cancellationToken);
+    if (!categoryExists) return Results.BadRequest(new { Detail = "Categoria invalida." });
+
+    await categorization.UpdateTransactionCategoryAsync(userId, transaction, request.CategoryId, request.Mode, request.RulePattern, cancellationToken);
     await db.SaveChangesAsync(cancellationToken);
     return Results.NoContent();
-});
+}).RequireAuthorization();
 
 app.MapPost("/api/transactions/bulk-categorize", async (
     BulkCategorizeRequest request,
     AppDbContext db,
+    HttpContext context,
     CancellationToken cancellationToken) =>
 {
+    var userId = CurrentUserId(context);
+    var categoryExists = await db.Categories.AnyAsync(c => c.Id == request.CategoryId && c.UserId == userId, cancellationToken);
+    if (!categoryExists) return Results.BadRequest(new { Detail = "Categoria invalida." });
+
     var transactions = await db.Transactions
-        .Where(t => request.TransactionIds.Contains(t.Id))
+        .Where(t => t.UserId == userId && request.TransactionIds.Contains(t.Id))
         .ToListAsync(cancellationToken);
 
     foreach (var transaction in transactions)
@@ -233,16 +355,19 @@ app.MapPost("/api/transactions/bulk-categorize", async (
 
     await db.SaveChangesAsync(cancellationToken);
     return Results.Ok(new { Updated = transactions.Count });
-});
+}).RequireAuthorization();
 
-app.MapGet("/api/categories", async (AppDbContext db, CancellationToken cancellationToken) =>
-    await db.Categories.OrderBy(c => c.Name).ToListAsync(cancellationToken));
+app.MapGet("/api/categories", async (AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    return await db.Categories.Where(c => c.UserId == userId).OrderBy(c => c.Name).ToListAsync(cancellationToken);
+}).RequireAuthorization();
 
-app.MapPost("/api/categories", async (CategoryRequest request, AppDbContext db, CancellationToken cancellationToken) =>
+app.MapPost("/api/categories", async (CategoryRequest request, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
     var category = new Category
     {
-        UserId = mockUserId,
+        UserId = CurrentUserId(context),
         Name = request.Name.Trim(),
         Color = request.Color,
         Icon = request.Icon
@@ -250,11 +375,12 @@ app.MapPost("/api/categories", async (CategoryRequest request, AppDbContext db, 
     db.Categories.Add(category);
     await db.SaveChangesAsync(cancellationToken);
     return Results.Created($"/api/categories/{category.Id}", category);
-});
+}).RequireAuthorization();
 
-app.MapPut("/api/categories/{id:guid}", async (Guid id, CategoryRequest request, AppDbContext db, CancellationToken cancellationToken) =>
+app.MapPut("/api/categories/{id:guid}", async (Guid id, CategoryRequest request, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
-    var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    var userId = CurrentUserId(context);
+    var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, cancellationToken);
     if (category is null) return Results.NotFound();
 
     category.Name = request.Name.Trim();
@@ -262,34 +388,46 @@ app.MapPut("/api/categories/{id:guid}", async (Guid id, CategoryRequest request,
     category.Icon = request.Icon;
     await db.SaveChangesAsync(cancellationToken);
     return Results.NoContent();
-});
+}).RequireAuthorization();
 
-app.MapDelete("/api/categories/{id:guid}", async (Guid id, AppDbContext db, CancellationToken cancellationToken) =>
+app.MapDelete("/api/categories/{id:guid}", async (Guid id, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
-    var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    var userId = CurrentUserId(context);
+    var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, cancellationToken);
     if (category is null) return Results.NotFound();
 
     await db.Transactions
-        .Where(t => t.CategoryId == id)
+        .Where(t => t.UserId == userId && t.CategoryId == id)
         .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.CategoryId, (Guid?)null), cancellationToken);
 
     await db.CategorizationRules
-        .Where(r => r.CategoryId == id)
+        .Where(r => r.UserId == userId && r.CategoryId == id)
         .ExecuteDeleteAsync(cancellationToken);
 
     db.Categories.Remove(category);
     await db.SaveChangesAsync(cancellationToken);
     return Results.NoContent();
-});
+}).RequireAuthorization();
 
-app.MapGet("/api/categorization-rules", async (AppDbContext db, CancellationToken cancellationToken) =>
-    await db.CategorizationRules.Include(r => r.Category).OrderBy(r => r.Pattern).ToListAsync(cancellationToken));
-
-app.MapPost("/api/categorization-rules", async (CreateRuleRequest request, AppDbContext db, CancellationToken cancellationToken) =>
+app.MapGet("/api/categorization-rules", async (AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
+    var userId = CurrentUserId(context);
+    return await db.CategorizationRules
+        .Where(r => r.UserId == userId)
+        .Include(r => r.Category)
+        .OrderBy(r => r.Pattern)
+        .ToListAsync(cancellationToken);
+}).RequireAuthorization();
+
+app.MapPost("/api/categorization-rules", async (CreateRuleRequest request, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    var categoryExists = await db.Categories.AnyAsync(c => c.Id == request.CategoryId && c.UserId == userId, cancellationToken);
+    if (!categoryExists) return Results.BadRequest(new { Detail = "Categoria invalida." });
+
     var rule = new CategorizationRule
     {
-        UserId = mockUserId,
+        UserId = userId,
         MatchType = request.MatchType,
         Pattern = request.Pattern,
         NormalizedPattern = TextNormalizer.NormalizeDescription(request.Pattern),
@@ -298,24 +436,50 @@ app.MapPost("/api/categorization-rules", async (CreateRuleRequest request, AppDb
     db.CategorizationRules.Add(rule);
     await db.SaveChangesAsync(cancellationToken);
     return Results.Created($"/api/categorization-rules/{rule.Id}", rule);
-});
+}).RequireAuthorization();
 
-app.MapDelete("/api/categorization-rules/{id:guid}", async (Guid id, AppDbContext db, CancellationToken cancellationToken) =>
+app.MapPut("/api/categorization-rules/{id:guid}", async (
+    Guid id,
+    CreateRuleRequest request,
+    AppDbContext db,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
 {
-    var rule = await db.CategorizationRules.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+    var userId = CurrentUserId(context);
+    var rule = await db.CategorizationRules.FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId, cancellationToken);
+    if (rule is null) return Results.NotFound();
+
+    var categoryExists = await db.Categories.AnyAsync(c => c.Id == request.CategoryId && c.UserId == userId, cancellationToken);
+    if (!categoryExists) return Results.BadRequest(new { Detail = "Categoria invalida." });
+
+    rule.MatchType = request.MatchType;
+    rule.Pattern = request.Pattern.Trim();
+    rule.NormalizedPattern = TextNormalizer.NormalizeDescription(request.Pattern);
+    rule.CategoryId = request.CategoryId;
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.NoContent();
+}).RequireAuthorization();
+
+app.MapDelete("/api/categorization-rules/{id:guid}", async (Guid id, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    var rule = await db.CategorizationRules.FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId, cancellationToken);
     if (rule is null) return Results.NotFound();
 
     db.CategorizationRules.Remove(rule);
     await db.SaveChangesAsync(cancellationToken);
     return Results.NoContent();
-});
+}).RequireAuthorization();
 
-app.MapGet("/api/dashboard/monthly-summary", async (int? month, int? year, AppDbContext db, CancellationToken cancellationToken) =>
+app.MapGet("/api/dashboard/monthly-summary", async (int? month, int? year, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
+    var userId = CurrentUserId(context);
     var selectedMonth = month ?? DateTime.UtcNow.Month;
     var selectedYear = year ?? DateTime.UtcNow.Year;
     var transactions = db.Transactions.Where(t =>
-        t.Invoice.ReferenceMonth == selectedMonth && t.Invoice.ReferenceYear == selectedYear);
+        t.UserId == userId &&
+        t.Invoice.ReferenceMonth == selectedMonth &&
+        t.Invoice.ReferenceYear == selectedYear);
 
     var debits = await transactions.Where(t => t.Amount > 0).SumAsync(t => t.Amount, cancellationToken);
     var credits = await transactions.Where(t => t.Amount < 0).SumAsync(t => t.Amount, cancellationToken);
@@ -329,15 +493,19 @@ app.MapGet("/api/dashboard/monthly-summary", async (int? month, int? year, AppDb
         NetAmount = debits + credits,
         TransactionCount = await transactions.CountAsync(cancellationToken)
     });
-});
+}).RequireAuthorization();
 
-app.MapGet("/api/dashboard/category-summary", async (int? month, int? year, AppDbContext db, CancellationToken cancellationToken) =>
+app.MapGet("/api/dashboard/category-summary", async (int? month, int? year, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
+    var userId = CurrentUserId(context);
     var selectedMonth = month ?? DateTime.UtcNow.Month;
     var selectedYear = year ?? DateTime.UtcNow.Year;
 
     return await db.Transactions
-        .Where(t => t.Invoice.ReferenceMonth == selectedMonth && t.Invoice.ReferenceYear == selectedYear)
+        .Where(t =>
+            t.UserId == userId &&
+            t.Invoice.ReferenceMonth == selectedMonth &&
+            t.Invoice.ReferenceYear == selectedYear)
         .GroupBy(t => new { t.CategoryId, CategoryName = t.Category == null ? "Sem categoria" : t.Category.Name })
         .Select(g => new
         {
@@ -348,7 +516,118 @@ app.MapGet("/api/dashboard/category-summary", async (int? month, int? year, AppD
         })
         .OrderByDescending(x => x.Total)
         .ToListAsync(cancellationToken);
-});
+}).RequireAuthorization();
+
+app.MapGet("/api/dashboard/month-comparison", async (AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    var today = DateTime.UtcNow;
+    var currentMonth = today.Month;
+    var currentYear = today.Year;
+    var previous = today.AddMonths(-1);
+
+    var current = await BuildMonthSummaryAsync(db, userId, currentMonth, currentYear, cancellationToken);
+    var previousSummary = await BuildMonthSummaryAsync(db, userId, previous.Month, previous.Year, cancellationToken);
+    var difference = current.NetAmount - previousSummary.NetAmount;
+    var percentage = previousSummary.NetAmount == 0
+        ? (decimal?)null
+        : Math.Round((difference / Math.Abs(previousSummary.NetAmount)) * 100, 2);
+
+    return Results.Ok(new
+    {
+        Current = current,
+        Previous = previousSummary,
+        Difference = difference,
+        Percentage = percentage
+    });
+}).RequireAuthorization();
+
+static string CurrentUserId(HttpContext context) =>
+    context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException();
+
+static string CurrentUserName(HttpContext context) =>
+    context.User.FindFirstValue(ClaimTypes.Name) ?? "";
+
+static string CurrentUserEmail(HttpContext context) =>
+    context.User.FindFirstValue(ClaimTypes.Email) ?? "";
+
+static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+static void DeleteUploadedFile(IWebHostEnvironment env, string filePath)
+{
+    if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)) return;
+
+    var uploadRoot = Path.GetFullPath(Path.Combine(env.ContentRootPath, "uploads", "invoices"));
+    var savedFile = Path.GetFullPath(filePath);
+    if (savedFile.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
+    {
+        File.Delete(savedFile);
+    }
+}
+
+static async Task<MonthSummaryResponse> BuildMonthSummaryAsync(
+    AppDbContext db,
+    string userId,
+    int month,
+    int year,
+    CancellationToken cancellationToken)
+{
+    var transactions = db.Transactions.Where(t =>
+        t.UserId == userId &&
+        t.Invoice.ReferenceMonth == month &&
+        t.Invoice.ReferenceYear == year);
+
+    var debits = await transactions.Where(t => t.Amount > 0).SumAsync(t => t.Amount, cancellationToken);
+    var credits = await transactions.Where(t => t.Amount < 0).SumAsync(t => t.Amount, cancellationToken);
+
+    return new MonthSummaryResponse(
+        month,
+        year,
+        debits,
+        credits,
+        debits + credits,
+        await transactions.CountAsync(cancellationToken));
+}
+
+static AuthResponse CreateAuthResponse(User user, string issuer, SymmetricSecurityKey signingKey)
+{
+    var expiresAt = DateTime.UtcNow.AddDays(7);
+    var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+    var token = new JwtSecurityToken(
+        issuer: issuer,
+        audience: issuer,
+        claims:
+        [
+            new Claim(ClaimTypes.NameIdentifier, user.Id),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Email, user.Email)
+        ],
+        expires: expiresAt,
+        signingCredentials: credentials);
+
+    return new AuthResponse(
+        new JwtSecurityTokenHandler().WriteToken(token),
+        expiresAt,
+        new UserResponse(user.Id, user.Name, user.Email));
+}
+
+static string HashPassword(string password)
+{
+    var salt = RandomNumberGenerator.GetBytes(16);
+    var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, 100_000, HashAlgorithmName.SHA256, 32);
+    return $"v1.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
+}
+
+static bool VerifyPassword(string password, string storedHash)
+{
+    var parts = storedHash.Split('.');
+    if (parts.Length != 3 || parts[0] != "v1") return false;
+
+    var salt = Convert.FromBase64String(parts[1]);
+    var expected = Convert.FromBase64String(parts[2]);
+    var actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, 100_000, HashAlgorithmName.SHA256, 32);
+    return CryptographicOperations.FixedTimeEquals(actual, expected);
+}
 
 static async Task WaitForDatabaseAsync(AppDbContext db)
 {
@@ -370,6 +649,11 @@ app.Run();
 
 public partial class Program;
 
+public record RegisterRequest(string Name, string Email, string Password);
+public record LoginRequest(string Email, string Password);
+public record UserResponse(string Id, string Name, string Email);
+public record AuthResponse(string Token, DateTime ExpiresAt, UserResponse User);
+public record MonthSummaryResponse(int Month, int Year, decimal TotalSpent, decimal TotalCredits, decimal NetAmount, int TransactionCount);
 public record UpdateTransactionCategoryRequest(Guid CategoryId, string Mode, string? RulePattern);
 public record BulkCategorizeRequest(Guid[] TransactionIds, Guid CategoryId);
 public record CategoryRequest(string Name, string Color, string Icon);

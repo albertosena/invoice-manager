@@ -17,12 +17,14 @@ public sealed class ExtractorClient(HttpClient httpClient)
         response.EnsureSuccessStatusCode();
 
         var extracted = await response.Content.ReadFromJsonAsync<ExtractedInvoice>(cancellationToken);
-        return extracted ?? new ExtractedInvoice("itau", []);
+        return extracted ?? new ExtractedInvoice("itau", DateTime.UtcNow.Month, DateTime.UtcNow.Year, []);
     }
 }
 
 public sealed record ExtractedInvoice(
     [property: JsonPropertyName("bank")] string Bank,
+    [property: JsonPropertyName("referenceMonth")] int ReferenceMonth,
+    [property: JsonPropertyName("referenceYear")] int ReferenceYear,
     [property: JsonPropertyName("transactions")] List<ExtractedTransaction> Transactions);
 
 public sealed record ExtractedTransaction(

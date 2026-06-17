@@ -1,194 +1,531 @@
 <main class="app-shell">
-  <header class="topbar">
-    <div>
-      <p class="eyebrow">Invoice Manager</p>
-      <h1>Faturas de cartao</h1>
-    </div>
-    <label class="upload-button" [class.disabled]="loading()">
-      <span>Importar PDF</span>
-      <input type="file" accept="application/pdf" (change)="onFileSelected($event)" [disabled]="loading()" />
-    </label>
-  </header>
-
-  @if (uploadMessage()) {
-    <section class="notice">{{ uploadMessage() }}</section>
-  }
-
-  <section class="summary-grid">
-    <article>
-      <span>Total gasto</span>
-      <strong>{{ formatCurrency(monthlySummary()?.totalSpent ?? 0) }}</strong>
-    </article>
-    <article>
-      <span>Creditos</span>
-      <strong>{{ formatCurrency(monthlySummary()?.totalCredits ?? 0) }}</strong>
-    </article>
-    <article>
-      <span>Liquido</span>
-      <strong>{{ formatCurrency(monthlySummary()?.netAmount ?? 0) }}</strong>
-    </article>
-    <article>
-      <span>Lancamentos</span>
-      <strong>{{ monthlySummary()?.transactionCount ?? 0 }}</strong>
-    </article>
-  </section>
-
-  <section class="workspace">
-    <aside class="panel invoices">
-      <div class="panel-title">
-        <h2>Faturas</h2>
-        <button type="button" (click)="loadInvoices()" title="Atualizar faturas">↻</button>
+  @if (!isAuthenticated()) {
+    <section class="auth-shell">
+      <div class="auth-hero">
+        <p class="eyebrow">Invoice Manager</p>
+        <h1>Controle suas faturas com clareza.</h1>
+        <p>Entre para importar PDFs, categorizar lancamentos e acompanhar seus gastos por usuario.</p>
       </div>
 
-      <div class="invoice-list">
-        @for (invoice of invoices(); track invoice.id) {
-          <div class="invoice-row" [class.active]="invoice.id === selectedInvoiceId()">
-            <button type="button" class="invoice-item" (click)="loadTransactions(invoice.id)">
-              <span>{{ invoice.originalFileName }}</span>
-              <small>{{ invoice.referenceMonth }}/{{ invoice.referenceYear }} - {{ invoice.transactionCount }} itens</small>
-              <em>{{ invoice.status }}</em>
-            </button>
-            <button type="button" class="danger-icon" (click)="deleteInvoice(invoice, $event)" title="Excluir fatura">x</button>
-          </div>
-        } @empty {
-          <p class="empty">Importe uma fatura PDF para comecar.</p>
-        }
-      </div>
-    </aside>
-
-    <section class="panel transactions">
-      <div class="panel-title">
-        <div>
-          <h2>Lancamentos</h2>
-          @if (selectedInvoice()) {
-            <p>{{ selectedInvoice()?.originalFileName }}</p>
-          }
+      <section class="auth-card">
+        <div class="auth-tabs">
+          <button type="button" [class.active]="authMode() === 'login'" (click)="authMode.set('login')">Login</button>
+          <button type="button" [class.active]="authMode() === 'register'" (click)="authMode.set('register')">Cadastro</button>
         </div>
-      </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Descricao</th>
-              <th>Valor</th>
-              <th>Tipo</th>
-              <th>Categoria</th>
-              <th>Regra</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (transaction of transactions(); track transaction.id) {
-              <tr>
-                <td>{{ transaction.date }}</td>
-                <td>
-                  <strong>{{ transaction.description }}</strong>
-                  @if (transaction.rawCategory) {
-                    <small>{{ transaction.rawCategory }}</small>
+        @if (authMessage()) {
+          <p class="auth-message">{{ authMessage() }}</p>
+        }
+
+        @if (authMode() === 'login') {
+          <form class="auth-form" (ngSubmit)="login()">
+            <label>
+              Email
+              <input name="loginEmail" type="email" autocomplete="email" [(ngModel)]="loginForm.email" />
+            </label>
+            <label>
+              Senha
+              <input name="loginPassword" type="password" autocomplete="current-password" [(ngModel)]="loginForm.password" />
+            </label>
+            <button type="submit" class="primary-action" [disabled]="loading()">Entrar</button>
+          </form>
+        } @else {
+          <form class="auth-form" (ngSubmit)="register()">
+            <label>
+              Nome
+              <input name="registerName" autocomplete="name" [(ngModel)]="registerForm.name" />
+            </label>
+            <label>
+              Email
+              <input name="registerEmail" type="email" autocomplete="email" [(ngModel)]="registerForm.email" />
+            </label>
+            <label>
+              Senha
+              <input name="registerPassword" type="password" autocomplete="new-password" [(ngModel)]="registerForm.password" />
+            </label>
+            <button type="submit" class="primary-action" [disabled]="loading()">Criar conta</button>
+          </form>
+        }
+      </section>
+    </section>
+  } @else {
+    <section class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="brand-block">
+          <div class="brand-mark">IM</div>
+          <div>
+            <strong>Invoice Manager</strong>
+            <small>Painel financeiro</small>
+          </div>
+        </div>
+
+        <nav class="admin-nav" aria-label="Navegacao principal">
+          <button type="button" [class.active]="activePage() === 'dashboard'" (click)="activePage.set('dashboard')">
+            <span aria-hidden="true">D</span>
+            Dashboard
+          </button>
+          <button type="button" [class.active]="activePage() === 'invoices'" (click)="activePage.set('invoices')">
+            <span aria-hidden="true">F</span>
+            Importar faturas
+          </button>
+          <button type="button" [class.active]="activePage() === 'categories'" (click)="activePage.set('categories')">
+            <span aria-hidden="true">C</span>
+            Categorias
+          </button>
+        </nav>
+
+        <div class="sidebar-user">
+          <div class="avatar" aria-hidden="true">{{ currentUser()?.name?.slice(0, 1) }}</div>
+          <div>
+            <strong>{{ currentUser()?.name }}</strong>
+            <small>{{ currentUser()?.email }}</small>
+          </div>
+        </div>
+      </aside>
+
+      <section class="admin-main">
+        <header class="admin-header">
+          <div class="page-heading">
+            <p class="eyebrow">Invoice Manager</p>
+            <h1>{{ pageTitle() }}</h1>
+            <p class="page-subtitle">{{ pageSubtitle() }}</p>
+          </div>
+          <div class="topbar-actions">
+            <button type="button" class="ghost-button" (click)="logout()">Sair</button>
+            <label class="upload-button" [class.disabled]="loading()">
+              <span class="button-icon" aria-hidden="true">+</span>
+              <span>Importar PDF</span>
+              <input type="file" accept="application/pdf" (change)="onFileSelected($event)" [disabled]="loading()" />
+            </label>
+          </div>
+        </header>
+
+        @if (uploadMessage()) {
+          <section class="notice" role="status">
+            <span class="notice-icon" aria-hidden="true">i</span>
+            <span>{{ uploadMessage() }}</span>
+          </section>
+        }
+
+        @if (activePage() === 'dashboard') {
+          <section class="summary-grid">
+            <article class="metric-card metric-spent">
+              <div class="metric-icon" aria-hidden="true">$</div>
+              <span>Total gasto do mes</span>
+              <strong>{{ formatCurrency(monthlySummary()?.totalSpent ?? 0) }}</strong>
+              @if (monthComparison()) {
+                <small class="metric-trend" [class.up]="metricDelta('totalSpent') > 0" [class.down]="metricDelta('totalSpent') < 0">
+                  <span aria-hidden="true">{{ trendIcon(metricDelta('totalSpent')) }}</span>
+                  {{ formatSignedCurrency(metricDelta('totalSpent')) }} vs mes anterior
+                </small>
+              }
+            </article>
+            <article class="metric-card metric-credit">
+              <div class="metric-icon" aria-hidden="true">+</div>
+              <span>Creditos do mes</span>
+              <strong>{{ formatCurrency(monthlySummary()?.totalCredits ?? 0) }}</strong>
+              @if (monthComparison()) {
+                <small class="metric-trend" [class.up]="metricDelta('totalCredits') > 0" [class.down]="metricDelta('totalCredits') < 0">
+                  <span aria-hidden="true">{{ trendIcon(metricDelta('totalCredits')) }}</span>
+                  {{ formatSignedCurrency(metricDelta('totalCredits')) }} vs mes anterior
+                </small>
+              }
+            </article>
+            <article class="metric-card metric-net">
+              <div class="metric-icon" aria-hidden="true">=</div>
+              <span>Liquido do mes</span>
+              <strong>{{ formatCurrency(monthlySummary()?.netAmount ?? 0) }}</strong>
+              @if (monthComparison()) {
+                <small class="metric-trend" [class.up]="metricDelta('netAmount') > 0" [class.down]="metricDelta('netAmount') < 0">
+                  <span aria-hidden="true">{{ trendIcon(metricDelta('netAmount')) }}</span>
+                  {{ formatSignedCurrency(metricDelta('netAmount')) }} vs mes anterior
+                </small>
+              }
+            </article>
+            <article class="metric-card">
+              <div class="metric-icon" aria-hidden="true">#</div>
+              <span>Lancamentos do mes</span>
+              <strong>{{ monthlySummary()?.transactionCount ?? 0 }}</strong>
+              @if (monthComparison()) {
+                <small class="metric-trend" [class.up]="metricDelta('transactionCount') > 0" [class.down]="metricDelta('transactionCount') < 0">
+                  <span aria-hidden="true">{{ trendIcon(metricDelta('transactionCount')) }}</span>
+                  {{ formatSignedNumber(metricDelta('transactionCount')) }} vs mes anterior
+                </small>
+              }
+            </article>
+          </section>
+
+          <section class="dashboard-grid">
+            <section class="panel">
+              <div class="panel-title">
+                <div>
+                  <h2>Resumo por categoria</h2>
+                  <p>Valores do mes atual</p>
+                </div>
+              </div>
+              <div class="category-summary">
+                @for (item of categorySummary(); track item.categoryName) {
+                  <div class="category-summary-row">
+                    <div class="summary-row-main">
+                      <span>{{ item.categoryName }}</span>
+                      <small>{{ item.count }} lancamentos</small>
+                    </div>
+                    <strong>{{ formatCurrency(item.total) }}</strong>
+                    <div class="progress-track" aria-hidden="true">
+                      <span [style.width.%]="dashboardCategoryProgress(item.total)"></span>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="empty">Sem dados para o mes atual.</p>
+                }
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-title">
+                <div>
+                  <h2>Faturas recentes</h2>
+                  <p>{{ invoices().length }} importadas</p>
+                </div>
+                <button type="button" class="ghost-button" (click)="activePage.set('invoices')">Ver todas</button>
+              </div>
+              <div class="invoice-list compact-list">
+                @for (invoice of recentInvoices(); track invoice.id) {
+                  <button type="button" class="invoice-item" (click)="openInvoice(invoice.id)">
+                    <span class="invoice-name">{{ invoice.originalFileName }}</span>
+                    <small>{{ invoice.referenceMonth }}/{{ invoice.referenceYear }} - {{ invoice.transactionCount }} itens</small>
+                    <em>{{ invoice.status }}</em>
+                  </button>
+                } @empty {
+                  <p class="empty boxed-empty">Importe uma fatura PDF para alimentar o dashboard.</p>
+                }
+              </div>
+            </section>
+          </section>
+        }
+
+        @if (activePage() === 'invoices') {
+          <section class="summary-grid">
+            <article class="metric-card metric-spent">
+              <div class="metric-icon" aria-hidden="true">$</div>
+              <span>Total gasto</span>
+              <strong>{{ formatCurrency(selectedInvoiceSummary().totalSpent) }}</strong>
+            </article>
+            <article class="metric-card metric-credit">
+              <div class="metric-icon" aria-hidden="true">+</div>
+              <span>Creditos</span>
+              <strong>{{ formatCurrency(selectedInvoiceSummary().totalCredits) }}</strong>
+            </article>
+            <article class="metric-card metric-net">
+              <div class="metric-icon" aria-hidden="true">=</div>
+              <span>Liquido</span>
+              <strong>{{ formatCurrency(selectedInvoiceSummary().netAmount) }}</strong>
+            </article>
+            <article class="metric-card">
+              <div class="metric-icon" aria-hidden="true">#</div>
+              <span>Lancamentos</span>
+              <strong>{{ selectedInvoiceSummary().transactionCount }}</strong>
+            </article>
+          </section>
+
+          <section class="workspace">
+            <aside class="dashboard-sidebar">
+              <section class="panel invoices">
+                <div class="panel-title">
+                  <div>
+                    <h2>Faturas</h2>
+                    <p>{{ invoices().length }} importadas</p>
+                  </div>
+                  <button type="button" class="icon-button" (click)="loadInvoices()" title="Atualizar faturas">R</button>
+                </div>
+
+                <div class="invoice-list">
+                  @for (invoice of invoices(); track invoice.id) {
+                    <div class="invoice-row" [class.active]="invoice.id === selectedInvoiceId()">
+                      <button type="button" class="invoice-item" (click)="loadTransactions(invoice.id)">
+                        <span class="invoice-name">{{ invoice.originalFileName }}</span>
+                        <small>{{ invoice.referenceMonth }}/{{ invoice.referenceYear }} - {{ invoice.transactionCount }} itens</small>
+                        <em>{{ invoice.status }}</em>
+                      </button>
+                      <button type="button" class="danger-icon" (click)="deleteInvoice(invoice, $event)" title="Excluir fatura">x</button>
+                    </div>
+                  } @empty {
+                    <p class="empty boxed-empty">Importe uma fatura PDF para comecar.</p>
                   }
-                </td>
-                <td [class.credit]="transaction.amount < 0">{{ formatCurrency(transaction.amount) }}</td>
-                <td>{{ transaction.type }}</td>
-                <td>
+                </div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title">
+                  <div>
+                    <h2>Resumo por categoria</h2>
+                    @if (selectedInvoice()) {
+                      <p>{{ selectedInvoice()?.originalFileName }}</p>
+                    }
+                  </div>
+                </div>
+                <div class="category-summary">
+                  @for (item of selectedInvoiceCategorySummary(); track item.categoryName) {
+                    <div class="category-summary-row">
+                      <div class="summary-row-main">
+                        <span>{{ item.categoryName }}</span>
+                        <small>{{ item.count }} lancamentos</small>
+                      </div>
+                      <strong>{{ formatCurrency(item.total) }}</strong>
+                      <div class="progress-track" aria-hidden="true">
+                        <span [style.width.%]="categoryProgress(item.total)"></span>
+                      </div>
+                    </div>
+                  } @empty {
+                    <p class="empty">Selecione uma fatura para ver o resumo.</p>
+                  }
+                </div>
+              </section>
+            </aside>
+
+            <section class="panel transactions">
+              <div class="panel-title transactions-title">
+                <div>
+                  <h2>Lancamentos</h2>
+                  @if (selectedInvoice()) {
+                    <p>{{ selectedInvoice()?.originalFileName }}</p>
+                  }
+                </div>
+                <p class="result-count">{{ filteredTransactions().length }} de {{ transactions().length }}</p>
+              </div>
+
+              <div class="transaction-filters filter-bar">
+                <label>
+                  Buscar
+                  <input
+                    name="transactionSearch"
+                    placeholder="Descricao, data ou valor"
+                    [ngModel]="transactionSearch()"
+                    (ngModelChange)="transactionSearch.set($event)" />
+                </label>
+                <label>
+                  Categoria
                   <select
-                    [ngModel]="transaction.categoryId"
-                    (ngModelChange)="openCategorizationRuleModal(transaction, $event)">
+                    name="transactionCategoryFilter"
+                    [ngModel]="transactionCategoryFilter()"
+                    (ngModelChange)="transactionCategoryFilter.set($event)">
+                    <option value="">Todas</option>
                     @for (category of categories(); track category.id) {
                       <option [value]="category.id">{{ category.name }}</option>
                     }
                   </select>
-                </td>
-                <td><small>historico + futuras</small></td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="6" class="empty">Selecione uma fatura para ver os lancamentos.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </section>
+                </label>
+                <label>
+                  Tipo
+                  <select
+                    name="transactionTypeFilter"
+                    [ngModel]="transactionTypeFilter()"
+                    (ngModelChange)="transactionTypeFilter.set($event)">
+                    <option value="">Todos</option>
+                    @for (type of transactionTypes(); track type) {
+                      <option [value]="type">{{ type }}</option>
+                    }
+                  </select>
+                </label>
+                <button type="button" class="ghost-button" (click)="clearTransactionFilters()">Limpar</button>
+              </div>
 
-  <section class="bottom-grid">
-    <section class="panel">
-      <div class="panel-title">
-        <h2>Categorias</h2>
-      </div>
-      <form class="category-form" (ngSubmit)="createCategory()">
-        <input name="name" placeholder="Nova categoria" [(ngModel)]="newCategory.name" />
-        <input name="color" type="color" [(ngModel)]="newCategory.color" />
-        <input name="icon" placeholder="icone" [(ngModel)]="newCategory.icon" />
-        <button type="submit">Criar</button>
-      </form>
-      <div class="chips">
-        @for (category of categories(); track category.id) {
-          <span [style.border-color]="category.color">
-            <i [style.background]="category.color"></i>
-            <b>{{ category.name }}</b>
-            <button type="button" (click)="editCategory(category)" title="Editar categoria">✎</button>
-            <button type="button" (click)="deleteCategory(category)" title="Excluir categoria">×</button>
-          </span>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Descricao</th>
+                      <th>Valor</th>
+                      <th>Tipo</th>
+                      <th>Categoria</th>
+                      <th>Regra</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (transaction of filteredTransactions(); track transaction.id) {
+                      <tr>
+                        <td class="date-cell">{{ transaction.date }}</td>
+                        <td class="description-cell">
+                          <strong>{{ transaction.description }}</strong>
+                          @if (transaction.rawCategory) {
+                            <small>{{ transaction.rawCategory }}</small>
+                          }
+                        </td>
+                        <td class="money-cell" [class.credit]="transaction.amount < 0">
+                          <span>{{ formatCurrency(transaction.amount) }}</span>
+                        </td>
+                        <td><span class="type-pill">{{ transaction.type }}</span></td>
+                        <td>
+                          <select
+                            [ngModel]="transaction.categoryId"
+                            (ngModelChange)="openCategorizationRuleModal(transaction, $event)">
+                            @for (category of categories(); track category.id) {
+                              <option [value]="category.id">{{ category.name }}</option>
+                            }
+                          </select>
+                        </td>
+                        <td><small class="rule-label">historico + futuras</small></td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="6" class="empty">Selecione uma fatura ou ajuste os filtros para ver os lancamentos.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </section>
         }
-      </div>
-    </section>
 
-    <section class="panel">
-      <div class="panel-title">
-        <h2>Resumo por categoria</h2>
-      </div>
-      <div class="category-summary">
-        @for (item of categorySummary(); track item.categoryName) {
-          <div>
-            <span>{{ item.categoryName }}</span>
-            <strong>{{ formatCurrency(item.total) }}</strong>
-            <small>{{ item.count }} lancamentos</small>
-          </div>
-        } @empty {
-          <p class="empty">Sem dados para o mes atual.</p>
+        @if (activePage() === 'categories') {
+          <section class="categories-page">
+            <section class="category-stack">
+              <section class="panel category-editor">
+                <div class="panel-title">
+                  <div>
+                    <h2>Nova categoria</h2>
+                    <p>Crie categorias para regras e classificacao manual.</p>
+                  </div>
+                </div>
+                <form class="category-form form-grid" (ngSubmit)="createCategory()">
+                  <label>
+                    Nome
+                    <input name="name" placeholder="Ex.: Mercado" [(ngModel)]="newCategory.name" />
+                  </label>
+                  <label>
+                    Cor
+                    <input name="color" type="color" [(ngModel)]="newCategory.color" />
+                  </label>
+                  <label>
+                    Icone
+                    <input name="icon" placeholder="tag" [(ngModel)]="newCategory.icon" />
+                  </label>
+                  <button type="submit">Criar categoria</button>
+                </form>
+              </section>
+
+              <section class="panel rule-editor">
+                <div class="panel-title">
+                  <div>
+                    <h2>{{ ruleForm.id ? 'Editar regra' : 'Nova regra' }}</h2>
+                    <p>Associe um texto padrao a uma categoria.</p>
+                  </div>
+                </div>
+                <form class="rule-form form-grid" (ngSubmit)="saveRule()">
+                  <label>
+                    Texto identificador
+                    <input name="rulePattern" placeholder="Ex.: IFOOD, UBER, NETFLIX" [(ngModel)]="ruleForm.pattern" />
+                  </label>
+                  <label>
+                    Categoria
+                    <select name="ruleCategory" [(ngModel)]="ruleForm.categoryId">
+                      <option value="">Selecione uma categoria</option>
+                      @for (category of categories(); track category.id) {
+                        <option [value]="category.id">{{ category.name }}</option>
+                      }
+                    </select>
+                  </label>
+                  <div class="form-actions">
+                    @if (ruleForm.id) {
+                      <button type="button" class="ghost-button" (click)="resetRuleForm()">Cancelar</button>
+                    }
+                    <button type="submit" class="primary-action">{{ ruleForm.id ? 'Salvar regra' : 'Criar regra' }}</button>
+                  </div>
+                </form>
+              </section>
+            </section>
+
+            <section class="panel">
+              <div class="panel-title">
+                <div>
+                  <h2>Categorias cadastradas</h2>
+                  <p>{{ categories().length }} categorias</p>
+                </div>
+              </div>
+              <div class="chips category-grid">
+                @for (category of categories(); track category.id) {
+                  <article class="category-card" [style.border-color]="category.color">
+                    <i [style.background]="category.color"></i>
+                    <div>
+                      <b>{{ category.name }}</b>
+                      <small>{{ category.icon || 'tag' }}</small>
+                    </div>
+                    <button type="button" (click)="editCategory(category)" title="Editar categoria">E</button>
+                    <button type="button" (click)="deleteCategory(category)" title="Excluir categoria">x</button>
+                  </article>
+                }
+              </div>
+            </section>
+
+            <section class="panel rules-panel">
+              <div class="panel-title">
+                <div>
+                  <h2>Regras de categorizacao</h2>
+                  <p>{{ categorizationRules().length }} regras</p>
+                </div>
+              </div>
+              <div class="rules-list">
+                @for (rule of categorizationRules(); track rule.id) {
+                  <div class="rule-row">
+                    <div>
+                      <strong>{{ rule.pattern }}</strong>
+                      <small>{{ rule.matchType }} em descricao normalizada</small>
+                    </div>
+                    <span class="rule-category-badge">{{ rule.category?.name ?? 'Categoria removida' }}</span>
+                    <div class="row-actions">
+                      <button type="button" class="ghost-button" (click)="editRule(rule)">Editar</button>
+                      <button type="button" class="danger-icon" (click)="deleteRule(rule)" title="Excluir regra">x</button>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="empty boxed-empty">Nenhuma regra cadastrada ainda.</p>
+                }
+              </div>
+            </section>
+          </section>
         }
-      </div>
-    </section>
-  </section>
-
-  @if (pendingRule(); as rule) {
-    <div class="modal-backdrop">
-      <section class="rule-modal" role="dialog" aria-modal="true">
-        <header>
-          <div>
-            <p class="eyebrow">Regra de categorizacao</p>
-            <h2>{{ rule.categoryName }}</h2>
-          </div>
-          <button type="button" (click)="closeCategorizationRuleModal()" title="Fechar">x</button>
-        </header>
-
-        <dl>
-          <dt>Lancamento</dt>
-          <dd>{{ rule.transaction.description }}</dd>
-          <dt>Descricao normalizada</dt>
-          <dd>{{ rule.transaction.normalizedDescription }}</dd>
-        </dl>
-
-        <label>
-          Texto que identifica compras parecidas
-          <input
-            name="rulePattern"
-            [ngModel]="rule.pattern"
-            (ngModelChange)="updatePendingPattern($event)"
-            placeholder="Ex.: IFD, IFOOD, UBER" />
-        </label>
-
-        <p class="modal-note">
-          Essa regra sera aplicada em faturas anteriores, na fatura atual e nas proximas importacoes.
-        </p>
-
-        <footer>
-          <button type="button" (click)="closeCategorizationRuleModal()">Cancelar</button>
-          <button type="button" class="primary-action" (click)="saveCategorizationRule()">Salvar regra</button>
-        </footer>
       </section>
-    </div>
+    </section>
+
+    @if (pendingRule(); as rule) {
+      <div class="modal-backdrop">
+        <section class="rule-modal" role="dialog" aria-modal="true">
+          <header>
+            <div>
+              <p class="eyebrow">Regra de categorizacao</p>
+              <h2>{{ rule.categoryName }}</h2>
+            </div>
+            <button type="button" class="icon-button" (click)="closeCategorizationRuleModal()" title="Fechar">x</button>
+          </header>
+
+          <dl class="rule-details">
+            <dt>Lancamento</dt>
+            <dd>{{ rule.transaction.description }}</dd>
+            <dt>Descricao normalizada</dt>
+            <dd>{{ rule.transaction.normalizedDescription }}</dd>
+          </dl>
+
+          <label class="modal-field">
+            <span>Texto que identifica compras parecidas</span>
+            <input
+              name="rulePattern"
+              [ngModel]="rule.pattern"
+              (ngModelChange)="updatePendingPattern($event)"
+              placeholder="Ex.: IFD, IFOOD, UBER" />
+          </label>
+
+          <p class="modal-note">
+            Essa regra sera aplicada em faturas anteriores, na fatura atual e nas proximas importacoes.
+          </p>
+
+          <footer>
+            <button type="button" (click)="closeCategorizationRuleModal()">Cancelar</button>
+            <button type="button" class="primary-action" (click)="saveCategorizationRule()">Salvar regra</button>
+          </footer>
+        </section>
+      </div>
+    }
   }
 </main>

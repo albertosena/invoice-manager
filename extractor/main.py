@@ -2,6 +2,7 @@ from collections import defaultdict
 from decimal import Decimal
 from pathlib import Path
 import csv
+from datetime import date
 import re
 import tempfile
 import unicodedata
@@ -13,8 +14,24 @@ from pydantic import BaseModel
 app = FastAPI(title="Invoice Extractor")
 
 date_re = re.compile(r"^\d{2}/\d{2}$")
+full_date_re = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
+month_year_re = re.compile(r"\b(0?[1-9]|1[0-2])[/.-](20\d{2})\b")
 value_re = re.compile(r"^-?\s?\d{1,3}(?:\.\d{3})*,\d{2}$")
 negative_signs = {"-", "\u2212", "\u2013", "\u2014"}
+month_names = {
+    "janeiro": 1,
+    "fevereiro": 2,
+    "marco": 3,
+    "abril": 4,
+    "maio": 5,
+    "junho": 6,
+    "julho": 7,
+    "agosto": 8,
+    "setembro": 9,
+    "outubro": 10,
+    "novembro": 11,
+    "dezembro": 12,
+}
 
 
 class Transaction(BaseModel):
@@ -27,6 +44,8 @@ class Transaction(BaseModel):
 
 class ExtractResponse(BaseModel):
     bank: str
+    referenceMonth: int
+    referenceYear: int
     transactions: list[Transaction]
 
 
@@ -63,6 +82,41 @@ def normalize_text(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value)
     ascii_text = "".join(char for char in normalized if not unicodedata.combining(char))
     return ascii_text.lower()
+
+
+def extract_reference_date(pdf_path: str) -> tuple[int, int]:
+    doc = fitz.open(pdf_path)
+    text = "\n".join(page.get_text("text") for page in doc)
+    normalized = normalize_text(text)
+
+    priority_terms = ("vencimento", "fatura", "fechamento", "referencia", "periodo")
+    lines = [line.strip() for line in normalized.splitlines() if line.strip()]
+
+    for line in lines:
+        if any(term in line for term in priority_terms):
+            full_date = full_date_re.search(line)
+            if full_date:
+                return int(full_date.group(2)), int(full_date.group(3))
+
+            month_year = month_year_re.search(line)
+            if month_year:
+                return int(month_year.group(1)), int(month_year.group(2))
+
+            for month_name, month in month_names.items():
+                match = re.search(rf"\b{month_name}\b\s+(20\d{{2}})", line)
+                if match:
+                    return month, int(match.group(1))
+
+    all_full_dates = [
+        (int(match.group(2)), int(match.group(3)))
+        for match in full_date_re.finditer(normalized)
+        if 1 <= int(match.group(2)) <= 12
+    ]
+    if all_full_dates:
+        return max(all_full_dates, key=lambda item: item[1] * 12 + item[0])
+
+    today = date.today()
+    return today.month, today.year
 
 
 def find_installments_section_y(words) -> float | None:
@@ -211,6 +265,7 @@ async def extract(file: UploadFile = File(...)):
         temp_path = temp_file.name
 
     try:
+        reference_month, reference_year = extract_reference_date(temp_path)
         rows = extract_transactions(temp_path)
         transactions = [
             Transaction(
@@ -222,6 +277,11 @@ async def extract(file: UploadFile = File(...)):
             )
             for row in rows
         ]
-        return ExtractResponse(bank="itau", transactions=transactions)
+        return ExtractResponse(
+            bank="itau",
+            referenceMonth=reference_month,
+            referenceYear=reference_year,
+            transactions=transactions,
+        )
     finally:
         Path(temp_path).unlink(missing_ok=True)
