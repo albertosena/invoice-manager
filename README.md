@@ -133,6 +133,7 @@ A lógica herdada do script original está em `extractor/main.py`:
 - `extract_rows_from_page`: controla colunas, áreas ignoradas e filtros.
 - `parse_description_and_value`: separa descrição e valor.
 - `normalize_value`: converte valores brasileiros para número decimal.
-- `extract_transactions`: ignora a penúltima e a última página, como o script original.
+- `extract_transactions`: ignora apenas a última página.
+- `extract_rows_from_page`: lê lançamentos até antes da seção `Compras parceladas - próximas faturas`.
 
 Se o layout do PDF mudar, ajuste primeiro os limites das colunas e filtros de texto em `extract_rows_from_page`. O retorno principal deve continuar sendo JSON; CSV existe apenas como função opcional de debug.

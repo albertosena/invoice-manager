@@ -4,6 +4,7 @@ from pathlib import Path
 import csv
 import re
 import tempfile
+import unicodedata
 
 import fitz
 from fastapi import FastAPI, File, UploadFile
@@ -58,10 +59,38 @@ def parse_description_and_value(parts: list[str], date_index: int, value_index: 
     return description, normalize_value(value)
 
 
+def normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_text = "".join(char for char in normalized if not unicodedata.combining(char))
+    return ascii_text.lower()
+
+
+def find_installments_section_y(words) -> float | None:
+    rows = defaultdict(list)
+
+    for x0, y0, _x1, _y1, text, *_ in words:
+        text = text.strip()
+        if not text:
+            continue
+
+        y_key = round(y0 / 3) * 3
+        rows[y_key].append((x0, text))
+
+    for y in sorted(rows.keys()):
+        line = " ".join(text for x, text in sorted(rows[y], key=lambda p: p[0]))
+        normalized_line = normalize_text(line)
+
+        if "compras parceladas" in normalized_line and "proximas faturas" in normalized_line:
+            return y
+
+    return None
+
+
 def extract_rows_from_page(page, page_number: int):
     words = page.get_text("words")
     page_width = page.rect.width
     transactions = []
+    installments_section_y = find_installments_section_y(words)
 
     columns = [
         ("esquerda", page_width * 0.25, page_width * 0.58),
@@ -86,6 +115,9 @@ def extract_rows_from_page(page, page_number: int):
             rows[y_key].append((x0, text))
 
         for y in sorted(rows.keys()):
+            if installments_section_y is not None and y >= installments_section_y:
+                continue
+
             parts = [text for x, text in sorted(rows[y], key=lambda p: p[0])]
 
             if len(parts) < 3:
@@ -100,13 +132,13 @@ def extract_rows_from_page(page, page_number: int):
             date = parts[date_index]
             description, amount = parse_description_and_value(parts, date_index, value_index)
 
-            if "Compras parceladas" in description:
+            normalized_description = normalize_text(description)
+
+            if "compras parceladas" in normalized_description:
                 continue
-            if "proximas faturas" in description.lower() or "pr\u00f3ximas faturas" in description.lower():
+            if "proximas faturas" in normalized_description:
                 continue
             if not description:
-                continue
-            if "azulvia" in description.lower() and page_number >= 5:
                 continue
 
             transactions.append(
@@ -132,7 +164,7 @@ def extract_transactions(pdf_path: str):
     total_pages = len(doc)
 
     for page_number, page in enumerate(doc, start=1):
-        if page_number >= total_pages - 1:
+        if page_number == total_pages:
             continue
 
         rows = extract_rows_from_page(page, page_number)
