@@ -36,11 +36,14 @@ export class InvoiceApiService {
     return this.http.get<Category[]>(`${API_BASE}/categories`);
   }
 
-  createCategory(payload: Pick<Category, 'name' | 'color' | 'icon'>) {
+  createCategory(payload: Pick<Category, 'name' | 'color' | 'icon' | 'monthlyGoal'>) {
     return this.http.post<Category>(`${API_BASE}/categories`, payload);
   }
 
-  updateCategory(categoryId: string, payload: Pick<Category, 'name' | 'color' | 'icon'>) {
+  updateCategory(
+    categoryId: string,
+    payload: Pick<Category, 'name' | 'color' | 'icon' | 'monthlyGoal'>,
+  ) {
     return this.http.put(`${API_BASE}/categories/${categoryId}`, payload);
   }
 
