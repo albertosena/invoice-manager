@@ -126,7 +126,7 @@
             (click)="navigatePage('categories')"
           >
             <span aria-hidden="true">C</span>
-            <strong>Categorias e regras</strong>
+            <strong>Categorias</strong>
           </button>
         </nav>
 
@@ -248,7 +248,7 @@
           </section>
 
           <section class="dashboard-grid">
-            <section class="panel">
+            <section class="panel category-summary-panel">
               <div class="panel-title">
                 <div>
                   <h2>Resumo por categoria</h2>
@@ -302,6 +302,9 @@
                     <div class="category-amounts">
                       <strong>{{ formatCurrency(item.total) }}</strong>
                       <small>Anterior: {{ formatCurrency(item.previousTotal) }}</small>
+                      @if (item.monthlyGoal > 0) {
+                        <small>Meta: {{ formatCurrency(item.monthlyGoal) }}</small>
+                      }
                     </div>
                     <div class="category-delta" [class]="categoryTrendClass(item)">
                       <span aria-hidden="true">{{ trendIcon(item.delta) }}</span>
@@ -325,6 +328,14 @@
                           ></span>
                         </div>
                       </div>
+                      @if (item.monthlyGoal > 0) {
+                        <div class="category-bar-row goal">
+                          <span>Meta</span>
+                          <div class="progress-track">
+                            <span [style.width.%]="dashboardCategoryProgress(item.monthlyGoal)"></span>
+                          </div>
+                        </div>
+                      }
                     </div>
                   </article>
                 } @empty {
@@ -333,7 +344,7 @@
               </div>
             </section>
 
-            <section class="panel">
+            <section class="panel recent-invoices-panel">
               <div class="panel-title">
                 <div>
                   <h2>Faturas recentes</h2>
@@ -395,8 +406,8 @@
             </article>
           </section>
 
-          <section class="workspace">
-            <aside class="dashboard-sidebar">
+          <section class="workspace" #invoiceWorkspace>
+            <aside class="dashboard-sidebar" #invoiceSidebar>
               <section class="panel invoices">
                 <div class="panel-title">
                   <div>
@@ -433,8 +444,6 @@
                           }}
                           - {{ invoice.transactionCount }} itens</small
                         >
-                        <em>{{ invoiceStatusLabel(invoice.status) }}</em>
-                        <span class="invoice-action">Ver lançamentos</span>
                       </button>
                       <button
                         type="button"
@@ -480,63 +489,6 @@
             </aside>
 
             <section class="panel transactions">
-              <div class="panel-title transactions-title">
-                <div>
-                  <h2>{{ selectedInvoice() ? 'Lançamentos da fatura' : 'Lançamentos' }}</h2>
-                  @if (selectedInvoice()) {
-                    <p>{{ selectedInvoice()?.originalFileName }}</p>
-                  }
-                </div>
-                <p class="result-count">
-                  {{ filteredTransactions().length }} de {{ transactions().length }}
-                </p>
-              </div>
-
-              <div class="quick-filters" aria-label="Filtros rápidos">
-                <button
-                  type="button"
-                  [class.active]="transactionQuickFilter() === 'all'"
-                  (click)="transactionQuickFilter.set('all')"
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  [class.active]="transactionQuickFilter() === 'outros'"
-                  (click)="transactionQuickFilter.set('outros')"
-                >
-                  Outros
-                </button>
-                <button
-                  type="button"
-                  [class.active]="transactionQuickFilter() === 'debitos'"
-                  (click)="transactionQuickFilter.set('debitos')"
-                >
-                  Débitos
-                </button>
-                <button
-                  type="button"
-                  [class.active]="transactionQuickFilter() === 'creditos'"
-                  (click)="transactionQuickFilter.set('creditos')"
-                >
-                  Créditos
-                </button>
-                <button
-                  type="button"
-                  [class.active]="transactionQuickFilter() === 'withRule'"
-                  (click)="transactionQuickFilter.set('withRule')"
-                >
-                  Com regra
-                </button>
-                <button
-                  type="button"
-                  [class.active]="transactionQuickFilter() === 'withoutRule'"
-                  (click)="transactionQuickFilter.set('withoutRule')"
-                >
-                  Sem regra
-                </button>
-              </div>
-
               <div class="transaction-filters filter-bar">
                 <label>
                   Buscar
@@ -557,6 +509,18 @@
                     <option value="">Todas</option>
                     @for (category of categories(); track category.id) {
                       <option [value]="category.id">{{ category.name }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  Filtro
+                  <select
+                    name="transactionQuickFilter"
+                    [ngModel]="transactionQuickFilter()"
+                    (ngModelChange)="changeTransactionQuickFilter($event)"
+                  >
+                    @for (filter of transactionQuickFilterOptions; track filter.value) {
+                      <option [value]="filter.value">{{ filter.label }}</option>
                     }
                   </select>
                 </label>
@@ -669,13 +633,12 @@
               }
             </section>
 
-            <section class="category-stack">
-              <section class="panel category-editor">
+            <section class="panel category-editor">
                 <div class="panel-title">
                   <div>
-                    <h2>Nova categoria</h2>
+                    <h2>{{ editingCategoryId() ? 'Editar categoria' : 'Nova categoria' }}</h2>
                     <p>
-                      Crie categorias para classificar seus lançamentos manualmente ou por regras.
+                      Crie categorias, ajuste cores e defina metas mensais de gasto.
                     </p>
                   </div>
                 </div>
@@ -696,11 +659,35 @@
                       [(ngModel)]="newCategory.icon"
                     />
                   </label>
-                  <button type="submit">Criar categoria</button>
+                  <label>
+                    Meta mensal
+                    <input
+                      name="monthlyGoal"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      [(ngModel)]="newCategory.monthlyGoal"
+                    />
+                  </label>
+                  <div class="form-actions">
+                    @if (editingCategoryId()) {
+                      <button
+                        type="button"
+                        class="ghost-button"
+                        (click)="resetCategoryForm()"
+                      >
+                        Cancelar
+                      </button>
+                    }
+                    <button type="submit" class="primary-action">
+                      {{ editingCategoryId() ? 'Salvar categoria' : 'Criar categoria' }}
+                    </button>
+                  </div>
                 </form>
-              </section>
+            </section>
 
-              <section class="panel rule-editor">
+            <section class="panel rule-editor">
                 <div class="panel-title">
                   <div>
                     <h2>{{ ruleForm.id ? 'Editar regra' : 'Nova regra' }}</h2>
@@ -746,7 +733,6 @@
                     <p class="rule-preview">{{ rulePreview() }}</p>
                   }
                 </form>
-              </section>
             </section>
 
             <section class="panel categories-list-panel">
@@ -778,6 +764,9 @@
                         <small>
                           <span class="category-icon-name">{{ category.icon || 'tag' }}</span>
                           <span>{{ categoryRuleCount(category.id) }} regra(s)</span>
+                          @if (category.monthlyGoal > 0) {
+                            <span>Meta {{ formatCurrency(category.monthlyGoal) }}</span>
+                          }
                         </small>
                       </div>
                     </div>

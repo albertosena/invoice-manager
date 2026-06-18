@@ -82,6 +82,10 @@ namespace Invoice.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<decimal>("MonthlyGoal")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("text");

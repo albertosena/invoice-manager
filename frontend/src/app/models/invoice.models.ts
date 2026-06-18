@@ -26,6 +26,7 @@ export type Category = {
   name: string;
   color: string;
   icon: string;
+  monthlyGoal: number;
 };
 
 export type CategorizationRule = {
@@ -61,6 +62,7 @@ export type CategorySummary = {
   categoryName: string;
   total: number;
   count: number;
+  monthlyGoal: number;
 };
 
 export type CategoryComparison = CategorySummary & {

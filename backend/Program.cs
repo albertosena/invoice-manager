@@ -371,7 +371,8 @@ app.MapPost("/api/categories", async (CategoryRequest request, AppDbContext db, 
         UserId = CurrentUserId(context),
         Name = request.Name.Trim(),
         Color = request.Color,
-        Icon = request.Icon
+        Icon = request.Icon,
+        MonthlyGoal = Math.Max(0, request.MonthlyGoal)
     };
     db.Categories.Add(category);
     await db.SaveChangesAsync(cancellationToken);
@@ -387,6 +388,7 @@ app.MapPut("/api/categories/{id:guid}", async (Guid id, CategoryRequest request,
     category.Name = request.Name.Trim();
     category.Color = request.Color;
     category.Icon = request.Icon;
+    category.MonthlyGoal = Math.Max(0, request.MonthlyGoal);
     await db.SaveChangesAsync(cancellationToken);
     return Results.NoContent();
 }).RequireAuthorization();
@@ -534,7 +536,7 @@ app.MapGet("/api/dashboard/category-summary", async (int? month, int? year, AppD
     var selectedMonth = month ?? DateTime.UtcNow.Month;
     var selectedYear = year ?? DateTime.UtcNow.Year;
 
-    return await db.Transactions
+    var totals = await db.Transactions
         .Where(t =>
             t.UserId == userId &&
             t.Invoice.ReferenceMonth == selectedMonth &&
@@ -549,6 +551,31 @@ app.MapGet("/api/dashboard/category-summary", async (int? month, int? year, AppD
         })
         .OrderByDescending(x => x.Total)
         .ToListAsync(cancellationToken);
+
+    var categories = await db.Categories
+        .Where(c => c.UserId == userId)
+        .Select(c => new { c.Id, c.Name, c.MonthlyGoal })
+        .ToListAsync(cancellationToken);
+
+    var categoryGoals = categories.ToDictionary(c => c.Id, c => c.MonthlyGoal);
+    var rows = totals
+        .Select(item => new CategorySummaryResponse(
+            item.CategoryId,
+            item.CategoryName,
+            item.Total,
+            item.Count,
+            item.CategoryId.HasValue ? categoryGoals.GetValueOrDefault(item.CategoryId.Value) : 0))
+        .ToList();
+
+    var categoriesWithTransactions = rows.Select(row => row.CategoryId).ToHashSet();
+    rows.AddRange(categories
+        .Where(category => category.MonthlyGoal > 0 && !categoriesWithTransactions.Contains(category.Id))
+        .Select(category => new CategorySummaryResponse(category.Id, category.Name, 0, 0, category.MonthlyGoal)));
+
+    return rows
+        .OrderByDescending(row => row.Total)
+        .ThenBy(row => row.CategoryName)
+        .ToList();
 }).RequireAuthorization();
 
 app.MapGet("/api/dashboard/month-comparison", async (int? month, int? year, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
@@ -729,5 +756,6 @@ public record AuthResponse(string Token, DateTime ExpiresAt, UserResponse User);
 public record MonthSummaryResponse(int Month, int Year, decimal TotalSpent, decimal TotalCredits, decimal NetAmount, int TransactionCount);
 public record UpdateTransactionCategoryRequest(Guid CategoryId, string Mode, string? RulePattern);
 public record BulkCategorizeRequest(Guid[] TransactionIds, Guid CategoryId);
-public record CategoryRequest(string Name, string Color, string Icon);
+public record CategoryRequest(string Name, string Color, string Icon, decimal MonthlyGoal);
+public record CategorySummaryResponse(Guid? CategoryId, string CategoryName, decimal Total, int Count, decimal MonthlyGoal);
 public record CreateRuleRequest(string MatchType, string Pattern, Guid CategoryId);

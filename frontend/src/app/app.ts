@@ -1,6 +1,17 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  computed,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AuthService } from './services/auth.service';
 import { InvoiceApiService } from './services/invoice-api.service';
 import {
@@ -26,7 +37,13 @@ import {
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App implements OnInit {
+export class App implements OnInit, AfterViewChecked, OnDestroy {
+  @ViewChild('invoiceWorkspace') private invoiceWorkspace?: ElementRef<HTMLElement>;
+  @ViewChild('invoiceSidebar') private invoiceSidebar?: ElementRef<HTMLElement>;
+
+  private invoiceSidebarObserver?: ResizeObserver;
+  private observedInvoiceSidebar?: HTMLElement;
+
   private readonly pagePaths: Record<Page, string> = {
     dashboard: '/dashboard',
     invoices: '/invoices',
@@ -55,6 +72,7 @@ export class App implements OnInit {
   transactionQuickFilter = signal<TransactionQuickFilter>('all');
   categorySearch = signal('');
   ruleSearch = signal('');
+  editingCategoryId = signal('');
   ruleFormMessage = signal('');
   selectedTransactionIds = signal<Set<string>>(new Set());
   bulkCategoryId = signal('');
@@ -67,10 +85,18 @@ export class App implements OnInit {
     transactionIds?: string[];
   } | null>(null);
 
-  newCategory = { name: '', color: '#64748b', icon: 'tag' };
+  newCategory = { name: '', color: '#64748b', icon: 'tag', monthlyGoal: 0 };
   ruleForm = { id: '', pattern: '', categoryId: '', matchType: 'contains' };
   loginForm = { email: '', password: '' };
   registerForm = { name: '', email: '', password: '' };
+  transactionQuickFilterOptions: { value: TransactionQuickFilter; label: string }[] = [
+    { value: 'all', label: 'Todos' },
+    { value: 'outros', label: 'Outros' },
+    { value: 'debitos', label: 'Débitos' },
+    { value: 'creditos', label: 'Créditos' },
+    { value: 'withRule', label: 'Com regra' },
+    { value: 'withoutRule', label: 'Sem regra' },
+  ];
 
   isAuthenticated = computed(() => !!this.token() && !!this.currentUser());
 
@@ -78,7 +104,7 @@ export class App implements OnInit {
     const titles: Record<Page, string> = {
       dashboard: 'Dashboard',
       invoices: 'Faturas',
-      categories: 'Categorias e regras',
+      categories: 'Categorias',
     };
     return titles[this.activePage()];
   });
@@ -119,9 +145,7 @@ export class App implements OnInit {
   });
 
   selectedInvoiceCategorySummary = computed<CategorySummary[]>(() => {
-    const categoriesById = new Map(
-      this.categories().map((category) => [category.id, category.name]),
-    );
+    const categoriesById = new Map(this.categories().map((category) => [category.id, category]));
     const summary = new Map<string, CategorySummary>();
 
     for (const transaction of this.transactions()) {
@@ -138,10 +162,11 @@ export class App implements OnInit {
         categoryId: transaction.categoryId,
         categoryName:
           transaction.categoryName ??
-          categoriesById.get(transaction.categoryId ?? '') ??
+          categoriesById.get(transaction.categoryId ?? '')?.name ??
           'Sem categoria',
         total: transaction.amount,
         count: 1,
+        monthlyGoal: categoriesById.get(transaction.categoryId ?? '')?.monthlyGoal ?? 0,
       });
     }
 
@@ -161,6 +186,7 @@ export class App implements OnInit {
       ...this.categoryComparisonRows().flatMap((item) => [
         Math.abs(item.total),
         Math.abs(item.previousTotal),
+        Math.abs(item.monthlyGoal),
       ]),
       0,
     ),
@@ -344,12 +370,42 @@ export class App implements OnInit {
     });
   }
 
+  ngAfterViewChecked(): void {
+    this.observeInvoiceSidebarHeight();
+  }
+
+  ngOnDestroy(): void {
+    this.invoiceSidebarObserver?.disconnect();
+  }
+
   refreshAll(): void {
     if (!this.token()) return;
     this.loadInvoices();
     this.loadCategories();
     this.loadCategorizationRules();
     this.loadDashboard();
+  }
+
+  private observeInvoiceSidebarHeight(): void {
+    const sidebar = this.invoiceSidebar?.nativeElement;
+    const workspace = this.invoiceWorkspace?.nativeElement;
+
+    if (!sidebar || !workspace || sidebar === this.observedInvoiceSidebar) return;
+
+    this.invoiceSidebarObserver?.disconnect();
+    this.observedInvoiceSidebar = sidebar;
+    this.syncInvoiceWorkspaceHeight();
+
+    this.invoiceSidebarObserver = new ResizeObserver(() => this.syncInvoiceWorkspaceHeight());
+    this.invoiceSidebarObserver.observe(sidebar);
+  }
+
+  private syncInvoiceWorkspaceHeight(): void {
+    const sidebar = this.invoiceSidebar?.nativeElement;
+    const workspace = this.invoiceWorkspace?.nativeElement;
+    if (!sidebar || !workspace) return;
+
+    workspace.style.setProperty('--invoice-sidebar-height', `${sidebar.offsetHeight}px`);
   }
 
   login(): void {
@@ -423,7 +479,12 @@ export class App implements OnInit {
   }
 
   loadInvoices(): void {
-    this.invoiceApi.getInvoices().subscribe((invoices) => this.invoices.set(invoices));
+    this.invoiceApi.getInvoices().subscribe((invoices) => {
+      this.invoices.set(invoices);
+      if (this.activePage() === 'dashboard' && !this.categorySummary().length) {
+        this.loadCategorySummaryFallback(this.dashboardPeriod(), true);
+      }
+    });
   }
 
   loadTransactions(invoiceId: string): void {
@@ -438,6 +499,10 @@ export class App implements OnInit {
     this.transactionSearch.set('');
     this.transactionCategoryFilter.set('');
     this.transactionQuickFilter.set('all');
+  }
+
+  changeTransactionQuickFilter(value: TransactionQuickFilter): void {
+    this.transactionQuickFilter.set(value);
   }
 
   openInvoice(invoiceId: string): void {
@@ -471,10 +536,24 @@ export class App implements OnInit {
       .subscribe((summary) => this.monthlySummary.set(summary));
     this.invoiceApi
       .getCategorySummary(params)
-      .subscribe((summary) => this.categorySummary.set(summary));
+      .subscribe({
+        next: (summary) => {
+          const normalized = this.normalizeCategorySummary(summary);
+          this.categorySummary.set(normalized);
+          if (!normalized.length) this.loadCategorySummaryFallback(this.dashboardPeriod(), true);
+        },
+        error: () => this.loadCategorySummaryFallback(this.dashboardPeriod(), true),
+      });
     this.invoiceApi
       .getCategorySummary(previousParams)
-      .subscribe((summary) => this.previousCategorySummary.set(summary));
+      .subscribe({
+        next: (summary) => {
+          const normalized = this.normalizeCategorySummary(summary);
+          this.previousCategorySummary.set(normalized);
+          if (!normalized.length) this.loadCategorySummaryFallback(this.previousDashboardPeriodValue(), false);
+        },
+        error: () => this.loadCategorySummaryFallback(this.previousDashboardPeriodValue(), false),
+      });
     this.invoiceApi
       .getMonthComparison(params)
       .subscribe((comparison) => this.monthComparison.set(comparison));
@@ -489,26 +568,36 @@ export class App implements OnInit {
     const name = this.newCategory.name.trim();
     if (!name) return;
 
-    this.invoiceApi.createCategory({ ...this.newCategory, name }).subscribe(() => {
-      this.newCategory = { name: '', color: '#64748b', icon: 'tag' };
+    const payload = {
+      ...this.newCategory,
+      name,
+      monthlyGoal: Math.max(0, Number(this.newCategory.monthlyGoal) || 0),
+    };
+    const editingId = this.editingCategoryId();
+    const request = editingId
+      ? this.invoiceApi.updateCategory(editingId, payload)
+      : this.invoiceApi.createCategory(payload);
+
+    request.subscribe(() => {
+      this.resetCategoryForm();
       this.loadCategories();
+      this.loadDashboard();
     });
   }
 
   editCategory(category: Category): void {
-    const name = window.prompt('Nome da categoria', category.name)?.trim();
-    if (!name) return;
+    this.editingCategoryId.set(category.id);
+    this.newCategory = {
+      name: category.name,
+      color: category.color,
+      icon: category.icon,
+      monthlyGoal: category.monthlyGoal ?? 0,
+    };
+  }
 
-    this.invoiceApi
-      .updateCategory(category.id, {
-        name,
-        color: category.color,
-        icon: category.icon,
-      })
-      .subscribe(() => {
-        this.loadCategories();
-        this.loadDashboard();
-      });
+  resetCategoryForm(): void {
+    this.editingCategoryId.set('');
+    this.newCategory = { name: '', color: '#64748b', icon: 'tag', monthlyGoal: 0 };
   }
 
   deleteCategory(category: Category): void {
@@ -837,6 +926,59 @@ export class App implements OnInit {
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .trim();
+  }
+
+  private normalizeCategorySummary(summary: CategorySummary[]): CategorySummary[] {
+    return summary.map((item) => ({
+      ...item,
+      monthlyGoal: Number(item.monthlyGoal) || 0,
+    }));
+  }
+
+  private loadCategorySummaryFallback(period: string, current: boolean): void {
+    const [year, month] = period.split('-').map(Number);
+    const invoices = this.invoices().filter(
+      (invoice) => invoice.referenceYear === year && invoice.referenceMonth === month,
+    );
+
+    if (!invoices.length) {
+      if (current) this.categorySummary.set([]);
+      else this.previousCategorySummary.set([]);
+      return;
+    }
+
+    forkJoin(
+      invoices.map((invoice) =>
+        this.invoiceApi.getTransactions(invoice.id).pipe(catchError(() => of([] as Transaction[]))),
+      ),
+    ).subscribe((groups) => {
+      const categoriesById = new Map(this.categories().map((category) => [category.id, category]));
+      const summary = new Map<string, CategorySummary>();
+
+      for (const transaction of groups.flat()) {
+        const key = transaction.categoryId ?? 'uncategorized';
+        const category = categoriesById.get(transaction.categoryId ?? '');
+        const row = summary.get(key);
+
+        if (row) {
+          row.total += transaction.amount;
+          row.count += 1;
+          continue;
+        }
+
+        summary.set(key, {
+          categoryId: transaction.categoryId,
+          categoryName: transaction.categoryName ?? category?.name ?? 'Sem categoria',
+          total: transaction.amount,
+          count: 1,
+          monthlyGoal: category?.monthlyGoal ?? 0,
+        });
+      }
+
+      const rows = Array.from(summary.values()).sort((a, b) => b.total - a.total);
+      if (current) this.categorySummary.set(rows);
+      else this.previousCategorySummary.set(rows);
+    });
   }
 
   formatCurrency(value: number): string {

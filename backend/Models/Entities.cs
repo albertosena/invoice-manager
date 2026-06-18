@@ -59,6 +59,7 @@ public sealed class Category
     public string Name { get; set; } = "";
     public string Color { get; set; } = "#64748b";
     public string Icon { get; set; } = "tag";
+    public decimal MonthlyGoal { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

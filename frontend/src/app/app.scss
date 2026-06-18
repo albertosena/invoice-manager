@@ -15,8 +15,10 @@
 
 .app-shell {
   width: 100%;
+  max-width: 100%;
   margin: 0 auto;
   padding: 0;
+  overflow-x: hidden;
 }
 
 .topbar,
@@ -36,23 +38,25 @@
 
 .admin-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 236px minmax(0, 1fr);
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
   transition: grid-template-columns 180ms ease;
 }
 
 .admin-layout.sidebar-collapsed {
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: 68px minmax(0, 1fr);
 }
 
 .admin-sidebar {
   position: sticky;
   top: 0;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 18px;
-  height: 100vh;
-  padding: 18px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 100vh;
+  padding: 16px 14px;
   border-right: 1px solid #e2e8f0;
   background: #ffffff;
   transition: padding 180ms ease;
@@ -106,8 +110,15 @@
   white-space: nowrap;
 }
 
+.sidebar-user {
+  align-self: end;
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid #eef2f7;
+}
+
 .admin-layout.sidebar-collapsed .admin-sidebar {
-  padding: 18px;
+  padding: 16px 12px;
 }
 
 .admin-layout.sidebar-collapsed .brand-block,
@@ -115,6 +126,10 @@
 .admin-layout.sidebar-collapsed .admin-nav button {
   grid-template-columns: 42px;
   justify-content: center;
+}
+
+.admin-layout.sidebar-collapsed .sidebar-user {
+  padding-top: 12px;
 }
 
 .admin-layout.sidebar-collapsed .brand-copy,
@@ -146,7 +161,7 @@
 .admin-nav {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 6px;
 }
 
 .admin-nav button {
@@ -154,7 +169,7 @@
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
-  min-height: 42px;
+  min-height: 40px;
   padding: 0 10px;
   color: #475569;
   border-color: transparent;
@@ -184,6 +199,8 @@
 
 .admin-main {
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   padding: clamp(14px, 1.7vw, 24px);
 }
 
@@ -192,20 +209,28 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
   align-items: start;
+}
+
+.category-summary-panel {
+  grid-column: span 3;
+}
+
+.recent-invoices-panel {
+  grid-column: span 1;
 }
 
 .categories-page {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
   align-items: start;
   --category-work-area-height: 360px;
 }
@@ -214,39 +239,38 @@
   grid-column: 1 / -1;
 }
 
-.rules-panel {
-  grid-column: 2;
-}
-
 .categories-list-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-column: 1 / span 2;
+  grid-row: 2;
   min-width: 0;
-  height: var(--category-work-area-height);
-  overflow: hidden;
 }
 
 .categories-list-panel .category-grid {
   align-content: start;
-  overflow: auto;
-  padding-right: 3px;
 }
 
 .category-summary-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.category-stack {
-  position: sticky;
-  top: 18px;
-  grid-row: 2 / span 2;
-  min-height: var(--category-work-area-height);
-  align-content: start;
+.category-editor {
+  grid-column: 3;
+  grid-row: 2;
 }
 
-.category-stack,
+.rules-panel {
+  grid-column: 1 / span 2;
+  grid-row: 3;
+}
+
+.rule-editor {
+  grid-column: 3;
+  grid-row: 3;
+}
+
 .rules-list,
 .rule-form {
   display: grid;
@@ -509,8 +533,8 @@ button,
 
 .summary-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .metric-card,
@@ -523,12 +547,15 @@ button,
 
 .metric-card {
   display: grid;
-  gap: 6px;
-  min-height: 96px;
-  padding: 14px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 10px;
+  align-content: center;
+  min-height: 74px;
+  padding: 12px 14px;
 }
 
 .compact-metric {
+  grid-template-columns: minmax(0, 1fr);
   min-height: 70px;
   align-content: center;
 }
@@ -542,8 +569,10 @@ button,
 }
 
 .metric-icon {
-  width: 30px;
-  height: 30px;
+  grid-column: 1;
+  grid-row: 2;
+  width: 34px;
+  height: 34px;
   color: #2563eb;
   border-radius: 8px;
   background: #eff6ff;
@@ -574,14 +603,25 @@ em {
   font-style: normal;
 }
 
+.summary-grid .metric-card > span:not(.metric-trend) {
+  grid-column: 1 / -1;
+}
+
 .metric-card strong {
   display: block;
   color: #111827;
-  font-size: clamp(1.18rem, 1.85vw, 1.5rem);
+  font-size: clamp(1.28rem, 1.9vw, 1.65rem);
   line-height: 1.15;
 }
 
+.summary-grid .metric-card > strong {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+}
+
 .metric-trend {
+  grid-column: 1 / -1;
   display: inline-flex;
   gap: 6px;
   align-items: center;
@@ -614,13 +654,30 @@ em {
 }
 
 .workspace {
-  grid-template-columns: minmax(270px, 320px) minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  min-height: 0;
 }
 
 .dashboard-sidebar {
+  grid-column: span 1;
   display: grid;
   gap: 12px;
+  align-content: start;
+  min-height: 0;
+}
+
+.transactions {
+  grid-column: span 3;
+  min-height: 0;
+}
+
+.panel.transactions {
+  display: flex;
+  flex-direction: column;
+  height: var(--invoice-sidebar-height, auto);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .panel {
@@ -646,12 +703,6 @@ em {
 .section-search input {
   min-height: 36px;
   padding: 0 12px;
-}
-
-.result-count {
-  color: #64748b;
-  font-size: 0.82rem;
-  white-space: nowrap;
 }
 
 .icon-button,
@@ -734,8 +785,8 @@ em {
 }
 
 .table-wrap {
-  max-height: calc(100vh - 320px);
-  min-height: 360px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -744,54 +795,45 @@ em {
 
 .transaction-filters {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(180px, 0.55fr) auto;
-  gap: 8px;
+  grid-template-columns: minmax(240px, 1fr) minmax(160px, 0.5fr) minmax(150px, 0.42fr) auto;
+  gap: 10px;
   align-items: end;
-  margin-bottom: 10px;
-  padding: 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
-}
-
-.quick-filters {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-
-.quick-filters button {
-  min-height: 30px;
-  padding: 0 10px;
-  color: #475569;
-  background: #f8fafc;
-}
-
-.quick-filters button.active {
-  color: #1d4ed8;
-  border-color: #bfdbfe;
-  background: #eff6ff;
-}
-
-.ghost-button.neutral {
-  color: #475569;
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  margin-bottom: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .transaction-filters label {
   display: grid;
-  gap: 4px;
+  gap: 5px;
   color: #64748b;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
+  font-weight: 750;
 }
 
 .transaction-filters input,
 .transaction-filters select {
-  min-height: 36px;
-  padding: 0 10px;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+  min-height: 38px;
+  padding: 0 12px;
+  border-color: #e2e8f0;
+  background-color: #f8fafc;
+  box-shadow: none;
+}
+
+.transaction-filters input:focus,
+.transaction-filters select:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.16);
+  border-color: #93c5fd;
+  background-color: #fff;
+}
+
+.transaction-filters .ghost-button {
+  min-height: 38px;
+  color: #1d4ed8;
+  border-color: #dbeafe;
+  background: #f8fbff;
 }
 
 .ghost-button {
@@ -973,9 +1015,8 @@ td select {
 }
 
 .category-form {
-  grid-template-columns: minmax(0, 1fr) 50px minmax(112px, 0.75fr);
-  gap: 10px;
-  margin-bottom: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.75fr);
+  gap: 12px;
 }
 
 .rule-form {
@@ -1019,19 +1060,16 @@ td select {
   background: #f0fdf4;
 }
 
-.category-form button {
-  grid-column: 1 / -1;
-}
-
 .category-form input,
 .category-form button {
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 10px;
 }
 
 .category-form input[type='color'] {
-  width: 50px;
-  padding: 5px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
 }
 
 .category-form button,
@@ -1582,6 +1620,24 @@ td select {
   padding: 0 14px;
 }
 
+@media (max-width: 1320px) {
+  .categories-page {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .category-summary-strip,
+  .categories-list-panel,
+  .rules-panel {
+    grid-column: 1 / -1;
+  }
+
+  .category-editor,
+  .rule-editor {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
 @media (max-width: 1100px) {
   .admin-layout,
   .dashboard-grid,
@@ -1595,7 +1651,7 @@ td select {
 
   .admin-sidebar {
     position: static;
-    height: auto;
+    min-height: 0;
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows: auto;
     align-items: center;
@@ -1654,7 +1710,7 @@ td select {
   }
 
   .category-summary-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .category-insights {
@@ -1663,10 +1719,26 @@ td select {
 
   .workspace {
     grid-template-columns: 1fr;
+    align-items: start;
+    height: auto;
+  }
+
+  .panel.transactions {
+    height: auto;
+  }
+
+  .dashboard-sidebar,
+  .transactions,
+  .category-editor,
+  .rule-editor,
+  .category-summary-panel,
+  .recent-invoices-panel {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .transaction-filters {
-    grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.65fr) auto;
+    grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.55fr) minmax(140px, 0.45fr) auto;
   }
 
   .invoices {
