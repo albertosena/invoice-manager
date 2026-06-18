@@ -76,6 +76,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await WaitForDatabaseAsync(db);
     await SeedData.EnsureSeededAsync(db);
+    await RepairCategorizationRulePatternsAsync(db);
 }
 
 app.MapPost("/api/auth/register", async (
@@ -425,15 +426,47 @@ app.MapPost("/api/categorization-rules", async (CreateRuleRequest request, AppDb
     var categoryExists = await db.Categories.AnyAsync(c => c.Id == request.CategoryId && c.UserId == userId, cancellationToken);
     if (!categoryExists) return Results.BadRequest(new { Detail = "Categoria invalida." });
 
-    var rule = new CategorizationRule
+    var pattern = request.Pattern.Trim();
+    var normalizedPattern = TextNormalizer.NormalizeDescription(pattern);
+    if (string.IsNullOrWhiteSpace(normalizedPattern))
     {
-        UserId = userId,
-        MatchType = request.MatchType,
-        Pattern = request.Pattern,
-        NormalizedPattern = TextNormalizer.NormalizeDescription(request.Pattern),
-        CategoryId = request.CategoryId
-    };
-    db.CategorizationRules.Add(rule);
+        return Results.BadRequest(new { Detail = "Informe um texto identificador valido." });
+    }
+
+    if (normalizedPattern.Length < 3)
+    {
+        return Results.BadRequest(new { Detail = "Informe um texto identificador mais especifico." });
+    }
+
+    var rule = await db.CategorizationRules.FirstOrDefaultAsync(r =>
+        r.UserId == userId &&
+        r.NormalizedPattern == normalizedPattern,
+        cancellationToken);
+
+    if (rule is null)
+    {
+        rule = new CategorizationRule
+        {
+            UserId = userId,
+            MatchType = request.MatchType,
+            Pattern = pattern,
+            NormalizedPattern = normalizedPattern,
+            CategoryId = request.CategoryId
+        };
+        db.CategorizationRules.Add(rule);
+    }
+    else
+    {
+        rule.MatchType = request.MatchType;
+        rule.Pattern = pattern;
+        rule.NormalizedPattern = normalizedPattern;
+        rule.CategoryId = request.CategoryId;
+    }
+
+    await db.Transactions
+        .Where(t => t.UserId == userId && t.NormalizedDescription.Contains(normalizedPattern))
+        .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.CategoryId, request.CategoryId), cancellationToken);
+
     await db.SaveChangesAsync(cancellationToken);
     return Results.Created($"/api/categorization-rules/{rule.Id}", rule);
 }).RequireAuthorization();
@@ -518,13 +551,13 @@ app.MapGet("/api/dashboard/category-summary", async (int? month, int? year, AppD
         .ToListAsync(cancellationToken);
 }).RequireAuthorization();
 
-app.MapGet("/api/dashboard/month-comparison", async (AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+app.MapGet("/api/dashboard/month-comparison", async (int? month, int? year, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
     var userId = CurrentUserId(context);
     var today = DateTime.UtcNow;
-    var currentMonth = today.Month;
-    var currentYear = today.Year;
-    var previous = today.AddMonths(-1);
+    var currentMonth = month ?? today.Month;
+    var currentYear = year ?? today.Year;
+    var previous = new DateTime(currentYear, currentMonth, 1).AddMonths(-1);
 
     var current = await BuildMonthSummaryAsync(db, userId, currentMonth, currentYear, cancellationToken);
     var previousSummary = await BuildMonthSummaryAsync(db, userId, previous.Month, previous.Year, cancellationToken);
@@ -587,6 +620,46 @@ static async Task<MonthSummaryResponse> BuildMonthSummaryAsync(
         credits,
         debits + credits,
         await transactions.CountAsync(cancellationToken));
+}
+
+static async Task RepairCategorizationRulePatternsAsync(AppDbContext db)
+{
+    var rules = await db.CategorizationRules.ToListAsync();
+    var changed = false;
+
+    foreach (var rule in rules)
+    {
+        var previous = rule.NormalizedPattern;
+        var normalized = TextNormalizer.NormalizeDescription(rule.Pattern);
+        if (string.IsNullOrWhiteSpace(normalized) || rule.NormalizedPattern == normalized)
+        {
+            continue;
+        }
+
+        if (!string.IsNullOrWhiteSpace(previous) && previous.Length < 3 && normalized.Length >= 3)
+        {
+            var fallback = await db.Categories.FirstOrDefaultAsync(c =>
+                c.UserId == rule.UserId &&
+                c.Name == "Outros");
+
+            await db.Transactions
+                .Where(t =>
+                    t.UserId == rule.UserId &&
+                    t.CategoryId == rule.CategoryId &&
+                    t.NormalizedDescription.Contains(previous) &&
+                    !t.NormalizedDescription.Contains(normalized))
+                .ExecuteUpdateAsync(setters =>
+                    setters.SetProperty(t => t.CategoryId, fallback == null ? null : (Guid?)fallback.Id));
+        }
+
+        rule.NormalizedPattern = normalized;
+        changed = true;
+    }
+
+    if (changed)
+    {
+        await db.SaveChangesAsync();
+    }
 }
 
 static AuthResponse CreateAuthResponse(User user, string issuer, SymmetricSecurityKey signingKey)

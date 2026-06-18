@@ -44,7 +44,7 @@ public static partial class TextNormalizer
     [GeneratedRegex("[^A-Z0-9 ]+")]
     private static partial Regex SpecialCharsRegex();
 
-    [GeneratedRegex("\\b[A-Z0-9]{10,}\\b")]
+    [GeneratedRegex("\\b(?=[A-Z0-9]*\\d)[A-Z0-9]{10,}\\b")]
     private static partial Regex LongCodeRegex();
 
     [GeneratedRegex("\\s+")]

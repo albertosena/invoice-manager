@@ -50,19 +50,19 @@ public sealed class CategorizationService(AppDbContext db)
             return;
         }
 
-        var pattern = TextNormalizer.NormalizeDescription(
-            string.IsNullOrWhiteSpace(rulePattern)
-                ? TextNormalizer.GuessRulePattern(transaction.NormalizedDescription)
-                : rulePattern);
+        var originalPattern = string.IsNullOrWhiteSpace(rulePattern)
+            ? TextNormalizer.GuessRulePattern(transaction.NormalizedDescription)
+            : rulePattern.Trim();
+        var normalizedPattern = TextNormalizer.NormalizeDescription(originalPattern);
 
-        if (string.IsNullOrWhiteSpace(pattern))
+        if (string.IsNullOrWhiteSpace(normalizedPattern))
         {
             return;
         }
 
         var existingRule = await db.CategorizationRules.FirstOrDefaultAsync(r =>
             r.UserId == userId &&
-            r.NormalizedPattern == pattern,
+            r.NormalizedPattern == normalizedPattern,
             cancellationToken);
 
         if (existingRule is null)
@@ -71,8 +71,8 @@ public sealed class CategorizationService(AppDbContext db)
             {
                 UserId = userId,
                 MatchType = "contains",
-                Pattern = pattern,
-                NormalizedPattern = pattern,
+                Pattern = originalPattern,
+                NormalizedPattern = normalizedPattern,
                 CategoryId = categoryId
             });
         }
@@ -80,12 +80,13 @@ public sealed class CategorizationService(AppDbContext db)
         {
             existingRule.CategoryId = categoryId;
             existingRule.MatchType = "contains";
-            existingRule.Pattern = pattern;
+            existingRule.Pattern = originalPattern;
+            existingRule.NormalizedPattern = normalizedPattern;
         }
 
         var matchingTransactions = await db.Transactions
             .Where(t => t.UserId == userId &&
-                        t.NormalizedDescription.Contains(pattern))
+                        t.NormalizedDescription.Contains(normalizedPattern))
             .ToListAsync(cancellationToken);
 
         foreach (var item in matchingTransactions)
