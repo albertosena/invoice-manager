@@ -107,7 +107,7 @@
           <button
             type="button"
             [class.active]="activePage() === 'dashboard'"
-            (click)="activePage.set('dashboard')"
+            (click)="navigatePage('dashboard')"
           >
             <span aria-hidden="true">D</span>
             <strong>Dashboard</strong>
@@ -115,7 +115,7 @@
           <button
             type="button"
             [class.active]="activePage() === 'invoices'"
-            (click)="activePage.set('invoices')"
+            (click)="navigatePage('invoices')"
           >
             <span aria-hidden="true">F</span>
             <strong>Faturas</strong>
@@ -123,7 +123,7 @@
           <button
             type="button"
             [class.active]="activePage() === 'categories'"
-            (click)="activePage.set('categories')"
+            (click)="navigatePage('categories')"
           >
             <span aria-hidden="true">C</span>
             <strong>Categorias e regras</strong>
@@ -261,7 +261,7 @@
                     <strong>{{ insight.count }} lançamentos ainda estão em Outros.</strong>
                     <p>Crie regras para melhorar sua categorização.</p>
                   </div>
-                  <button type="button" class="primary-action" (click)="activePage.set('invoices')">
+                  <button type="button" class="primary-action" (click)="navigatePage('invoices')">
                     Categorizar lançamentos
                   </button>
                 </div>
@@ -339,7 +339,7 @@
                   <h2>Faturas recentes</h2>
                   <p>{{ invoices().length }} importadas</p>
                 </div>
-                <button type="button" class="ghost-button" (click)="activePage.set('invoices')">
+                <button type="button" class="ghost-button" (click)="navigatePage('invoices')">
                   Ver todas
                 </button>
               </div>

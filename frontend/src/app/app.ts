@@ -27,6 +27,12 @@ import {
   styleUrl: './app.scss',
 })
 export class App implements OnInit {
+  private readonly pagePaths: Record<Page, string> = {
+    dashboard: '/dashboard',
+    invoices: '/invoices',
+    categories: '/categories',
+  };
+
   invoices = signal<Invoice[]>([]);
   transactions = signal<Transaction[]>([]);
   categories = signal<Category[]>([]);
@@ -323,6 +329,9 @@ export class App implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.syncPageFromUrl();
+    window.addEventListener('popstate', () => this.syncPageFromUrl());
+
     if (!this.token()) return;
 
     this.authService.me().subscribe({
@@ -398,7 +407,7 @@ export class App implements OnInit {
       next: (result) => {
         this.uploadMessage.set(`Fatura importada com ${result.transactions} lançamentos.`);
         this.selectedInvoiceId.set(result.id);
-        this.activePage.set('invoices');
+        this.navigatePage('invoices');
         this.refreshAll();
         this.loadTransactions(result.id);
         this.loading.set(false);
@@ -432,8 +441,16 @@ export class App implements OnInit {
   }
 
   openInvoice(invoiceId: string): void {
-    this.activePage.set('invoices');
+    this.navigatePage('invoices');
     this.loadTransactions(invoiceId);
+  }
+
+  navigatePage(page: Page): void {
+    this.activePage.set(page);
+    const path = this.pagePaths[page];
+    if (window.location.pathname !== path) {
+      history.pushState(null, '', path);
+    }
   }
 
   loadCategories(): void {
@@ -778,6 +795,13 @@ export class App implements OnInit {
     this.authMessage.set('');
     this.uploadMessage.set('');
     this.refreshAll();
+  }
+
+  private syncPageFromUrl(): void {
+    const page = (Object.entries(this.pagePaths).find(([, path]) =>
+      window.location.pathname.endsWith(path),
+    )?.[0] ?? 'dashboard') as Page;
+    this.activePage.set(page);
   }
 
   private readStoredUser(): User | null {
