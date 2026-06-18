@@ -531,7 +531,9 @@
                       <th>Data</th>
                       <th>Descrição</th>
                       <th>Valor</th>
+                      <th>Tipo</th>
                       <th>Categoria</th>
+                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -560,6 +562,9 @@
                         <td class="money-cell" [class.credit]="transaction.amount < 0">
                           <span>{{ formatCurrency(transaction.amount) }}</span>
                         </td>
+                        <td class="type-cell">
+                          {{ transaction.amount < 0 ? 'Crédito' : 'Débito' }}
+                        </td>
                         <td>
                           <div
                             class="category-select"
@@ -576,10 +581,15 @@
                             </select>
                           </div>
                         </td>
+                        <td>
+                          <span [class]="categoryBadgeClass(transaction.categoryName)">
+                            {{ ruleLabel(transaction) }}
+                          </span>
+                        </td>
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="5" class="empty">
+                        <td colspan="7" class="empty">
                           Selecione uma fatura ou ajuste os filtros para ver os lançamentos.
                         </td>
                       </tr>
