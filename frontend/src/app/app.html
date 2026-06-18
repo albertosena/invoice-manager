@@ -103,7 +103,7 @@
           </div>
         </div>
 
-        <nav class="admin-nav" aria-label="Navegacao principal">
+        <nav class="admin-nav" aria-label="Navegação principal">
           <button
             type="button"
             [class.active]="activePage() === 'dashboard'"
@@ -296,8 +296,8 @@
                         >{{ item.count }} lançamentos no período atual
                         @if (item.share > 0) {
                           <span>{{ item.share | number: '1.0-0' }}% do gasto</span>
-                        }</small
-                      >
+                        }
+                      </small>
                     </div>
                     <div class="category-amounts">
                       <strong>{{ formatCurrency(item.total) }}</strong>
@@ -446,7 +446,7 @@
                       </button>
                     </div>
                   } @empty {
-                    <p class="empty boxed-empty">Importe uma fatura PDF para comecar.</p>
+                    <p class="empty boxed-empty">Importe uma fatura PDF para começar.</p>
                   }
                 </div>
               </section>
@@ -674,7 +674,9 @@
                 <div class="panel-title">
                   <div>
                     <h2>Nova categoria</h2>
-                    <p>Crie categorias para classificar seus lançamentos manualmente ou por regras.</p>
+                    <p>
+                      Crie categorias para classificar seus lançamentos manualmente ou por regras.
+                    </p>
                   </div>
                 </div>
                 <form class="category-form form-grid" (ngSubmit)="createCategory()">
@@ -848,8 +850,7 @@
                     <strong>Nenhuma regra criada ainda</strong>
                     <p>
                       Crie regras para categorizar automaticamente seus lançamentos futuros.
-                      Exemplo: toda descrição que contém "UBER" será classificada como
-                      "Transporte".
+                      Exemplo: toda descrição que contém "UBER" será classificada como "Transporte".
                     </p>
                     <button type="button" class="primary-action" (click)="focusRuleForm()">
                       Criar primeira regra
@@ -898,9 +899,7 @@
             />
           </label>
 
-          <p class="modal-note">
-            A regra será criada usando exatamente o texto digitado acima.
-          </p>
+          <p class="modal-note">A regra será criada usando exatamente o texto digitado acima.</p>
 
           <footer>
             <button type="button" (click)="closeCategorizationRuleModal()">Não agora</button>

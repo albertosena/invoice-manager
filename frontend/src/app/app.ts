@@ -1,111 +1,24 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-
-const API_BASE =
-  window.location.port === '4200' ? `http://${window.location.hostname}:5000/api` : '/api';
-
-type Invoice = {
-  id: string;
-  bankName: string;
-  referenceMonth: number;
-  referenceYear: number;
-  originalFileName: string;
-  status: string;
-  createdAt: string;
-  transactionCount: number;
-};
-
-type Transaction = {
-  id: string;
-  date: string;
-  description: string;
-  normalizedDescription: string;
-  rawCategory: string;
-  amount: number;
-  type: string;
-  categoryId: string | null;
-  categoryName: string | null;
-};
-
-type Category = {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-};
-
-type CategorizationRule = {
-  id: string;
-  matchType: string;
-  pattern: string;
-  normalizedPattern: string;
-  categoryId: string;
-  category: Category | null;
-  createdAt: string;
-};
-
-type MonthlySummary = {
-  month?: number;
-  year?: number;
-  totalSpent: number;
-  totalCredits: number;
-  netAmount: number;
-  transactionCount: number;
-};
-
-type MonthComparison = {
-  current: MonthlySummary;
-  previous: MonthlySummary;
-  difference: number;
-  percentage: number | null;
-};
-
-type SummaryMetric = 'totalSpent' | 'totalCredits' | 'netAmount' | 'transactionCount';
-
-type CategorySummary = {
-  categoryId: string | null;
-  categoryName: string;
-  total: number;
-  count: number;
-};
-
-type CategoryComparison = CategorySummary & {
-  previousTotal: number;
-  previousCount: number;
-  delta: number;
-  percentage: number | null;
-  share: number;
-};
-
-type CategoryInsight = {
-  label: string;
-  categoryName: string;
-  value: string;
-  tone: 'neutral' | 'up' | 'down';
-};
-
-type User = {
-  id: string;
-  name: string;
-  email: string;
-};
-
-type AuthResponse = {
-  token: string;
-  expiresAt: string;
-  user: User;
-};
-
-type Page = 'dashboard' | 'invoices' | 'categories';
-type TransactionQuickFilter =
-  | 'all'
-  | 'outros'
-  | 'debitos'
-  | 'creditos'
-  | 'withRule'
-  | 'withoutRule';
+import { AuthService } from './services/auth.service';
+import { InvoiceApiService } from './services/invoice-api.service';
+import {
+  AuthResponse,
+  CategorizationRule,
+  Category,
+  CategoryComparison,
+  CategoryInsight,
+  CategorySummary,
+  Invoice,
+  MonthComparison,
+  MonthlySummary,
+  Page,
+  SummaryMetric,
+  Transaction,
+  TransactionQuickFilter,
+  User,
+} from './models/invoice.models';
 
 @Component({
   selector: 'app-root',
@@ -389,10 +302,11 @@ export class App implements OnInit {
     );
   });
 
-  activeRulesCount = computed(() =>
-    this.categorizationRules().filter((rule) =>
-      this.categories().some((category) => category.id === rule.categoryId),
-    ).length,
+  activeRulesCount = computed(
+    () =>
+      this.categorizationRules().filter((rule) =>
+        this.categories().some((category) => category.id === rule.categoryId),
+      ).length,
   );
 
   rulePreview = computed(() => {
@@ -403,12 +317,15 @@ export class App implements OnInit {
     return `Se a descrição contiver "${pattern}", classificar como "${category}".`;
   });
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private authService: AuthService,
+    private invoiceApi: InvoiceApiService,
+  ) {}
 
   ngOnInit(): void {
     if (!this.token()) return;
 
-    this.http.get<User>(`${API_BASE}/auth/me`, this.authOptions()).subscribe({
+    this.authService.me().subscribe({
       next: (user) => {
         this.currentUser.set(user);
         localStorage.setItem('invoice-manager-user', JSON.stringify(user));
@@ -429,10 +346,10 @@ export class App implements OnInit {
   login(): void {
     this.authMessage.set('');
     this.loading.set(true);
-    this.http.post<AuthResponse>(`${API_BASE}/auth/login`, this.loginForm).subscribe({
+    this.authService.login(this.loginForm).subscribe({
       next: (response) => this.applyAuthResponse(response),
       error: () => {
-        this.authMessage.set('Email ou senha invalidos.');
+        this.authMessage.set('Email ou senha inválidos.');
         this.loading.set(false);
       },
     });
@@ -441,11 +358,11 @@ export class App implements OnInit {
   register(): void {
     this.authMessage.set('');
     this.loading.set(true);
-    this.http.post<AuthResponse>(`${API_BASE}/auth/register`, this.registerForm).subscribe({
+    this.authService.register(this.registerForm).subscribe({
       next: (response) => this.applyAuthResponse(response),
       error: (error) => {
         this.authMessage.set(
-          error?.error?.detail ?? error?.error?.Detail ?? 'Nao foi possivel criar a conta.',
+          error?.error?.detail ?? error?.error?.Detail ?? 'Não foi possível criar a conta.',
         );
         this.loading.set(false);
       },
@@ -477,42 +394,34 @@ export class App implements OnInit {
     this.loading.set(true);
     this.uploadMessage.set('Importando e extraindo lançamentos...');
 
-    this.http
-      .post<{
-        id: string;
-        status: string;
-        transactions: number;
-      }>(`${API_BASE}/invoices/upload`, data, this.authOptions())
-      .subscribe({
-        next: (result) => {
-          this.uploadMessage.set(`Fatura importada com ${result.transactions} lançamentos.`);
-          this.selectedInvoiceId.set(result.id);
-          this.activePage.set('invoices');
-          this.refreshAll();
-          this.loadTransactions(result.id);
-          this.loading.set(false);
-          input.value = '';
-        },
-        error: (error) => {
-          this.uploadMessage.set(
-            error?.error?.detail ?? error?.error?.Detail ?? 'Falha ao importar PDF.',
-          );
-          this.loading.set(false);
-        },
-      });
+    this.invoiceApi.uploadInvoice(data).subscribe({
+      next: (result) => {
+        this.uploadMessage.set(`Fatura importada com ${result.transactions} lançamentos.`);
+        this.selectedInvoiceId.set(result.id);
+        this.activePage.set('invoices');
+        this.refreshAll();
+        this.loadTransactions(result.id);
+        this.loading.set(false);
+        input.value = '';
+      },
+      error: (error) => {
+        this.uploadMessage.set(
+          error?.error?.detail ?? error?.error?.Detail ?? 'Falha ao importar PDF.',
+        );
+        this.loading.set(false);
+      },
+    });
   }
 
   loadInvoices(): void {
-    this.http
-      .get<Invoice[]>(`${API_BASE}/invoices`, this.authOptions())
-      .subscribe((invoices) => this.invoices.set(invoices));
+    this.invoiceApi.getInvoices().subscribe((invoices) => this.invoices.set(invoices));
   }
 
   loadTransactions(invoiceId: string): void {
     this.selectedInvoiceId.set(invoiceId);
     this.clearTransactionSelection();
-    this.http
-      .get<Transaction[]>(`${API_BASE}/invoices/${invoiceId}/transactions`, this.authOptions())
+    this.invoiceApi
+      .getTransactions(invoiceId)
       .subscribe((transactions) => this.transactions.set(transactions));
   }
 
@@ -528,34 +437,29 @@ export class App implements OnInit {
   }
 
   loadCategories(): void {
-    this.http
-      .get<Category[]>(`${API_BASE}/categories`, this.authOptions())
-      .subscribe((categories) => this.categories.set(categories));
+    this.invoiceApi.getCategories().subscribe((categories) => this.categories.set(categories));
   }
 
   loadCategorizationRules(): void {
-    this.http
-      .get<CategorizationRule[]>(`${API_BASE}/categorization-rules`, this.authOptions())
+    this.invoiceApi
+      .getCategorizationRules()
       .subscribe((rules) => this.categorizationRules.set(rules));
   }
 
   loadDashboard(): void {
     const params = this.dashboardPeriodParams();
     const previousParams = this.dashboardPeriodParams(this.previousDashboardPeriodValue());
-    this.http
-      .get<MonthlySummary>(`${API_BASE}/dashboard/monthly-summary${params}`, this.authOptions())
+    this.invoiceApi
+      .getMonthlySummary(params)
       .subscribe((summary) => this.monthlySummary.set(summary));
-    this.http
-      .get<CategorySummary[]>(`${API_BASE}/dashboard/category-summary${params}`, this.authOptions())
+    this.invoiceApi
+      .getCategorySummary(params)
       .subscribe((summary) => this.categorySummary.set(summary));
-    this.http
-      .get<CategorySummary[]>(
-        `${API_BASE}/dashboard/category-summary${previousParams}`,
-        this.authOptions(),
-      )
+    this.invoiceApi
+      .getCategorySummary(previousParams)
       .subscribe((summary) => this.previousCategorySummary.set(summary));
-    this.http
-      .get<MonthComparison>(`${API_BASE}/dashboard/month-comparison${params}`, this.authOptions())
+    this.invoiceApi
+      .getMonthComparison(params)
       .subscribe((comparison) => this.monthComparison.set(comparison));
   }
 
@@ -568,28 +472,22 @@ export class App implements OnInit {
     const name = this.newCategory.name.trim();
     if (!name) return;
 
-    this.http
-      .post<Category>(`${API_BASE}/categories`, { ...this.newCategory, name }, this.authOptions())
-      .subscribe(() => {
-        this.newCategory = { name: '', color: '#64748b', icon: 'tag' };
-        this.loadCategories();
-      });
+    this.invoiceApi.createCategory({ ...this.newCategory, name }).subscribe(() => {
+      this.newCategory = { name: '', color: '#64748b', icon: 'tag' };
+      this.loadCategories();
+    });
   }
 
   editCategory(category: Category): void {
     const name = window.prompt('Nome da categoria', category.name)?.trim();
     if (!name) return;
 
-    this.http
-      .put(
-        `${API_BASE}/categories/${category.id}`,
-        {
-          name,
-          color: category.color,
-          icon: category.icon,
-        },
-        this.authOptions(),
-      )
+    this.invoiceApi
+      .updateCategory(category.id, {
+        name,
+        color: category.color,
+        icon: category.icon,
+      })
       .subscribe(() => {
         this.loadCategories();
         this.loadDashboard();
@@ -611,7 +509,7 @@ export class App implements OnInit {
     );
     if (!confirmed) return;
 
-    this.http.delete(`${API_BASE}/categories/${category.id}`, this.authOptions()).subscribe(() => {
+    this.invoiceApi.deleteCategory(category.id).subscribe(() => {
       this.loadCategories();
       this.loadCategorizationRules();
       this.loadDashboard();
@@ -631,12 +529,8 @@ export class App implements OnInit {
 
     const payload = { matchType: this.ruleForm.matchType, pattern, categoryId };
     const request = this.ruleForm.id
-      ? this.http.put(
-          `${API_BASE}/categorization-rules/${this.ruleForm.id}`,
-          payload,
-          this.authOptions(),
-        )
-      : this.http.post(`${API_BASE}/categorization-rules`, payload, this.authOptions());
+      ? this.invoiceApi.updateRule(this.ruleForm.id, payload)
+      : this.invoiceApi.createRule(payload);
 
     request.subscribe(() => {
       this.resetRuleForm();
@@ -658,12 +552,10 @@ export class App implements OnInit {
     const confirmed = window.confirm(`Excluir a regra "${rule.pattern}"?`);
     if (!confirmed) return;
 
-    this.http
-      .delete(`${API_BASE}/categorization-rules/${rule.id}`, this.authOptions())
-      .subscribe(() => {
-        if (this.ruleForm.id === rule.id) this.resetRuleForm();
-        this.loadCategorizationRules();
-      });
+    this.invoiceApi.deleteRule(rule.id).subscribe(() => {
+      if (this.ruleForm.id === rule.id) this.resetRuleForm();
+      this.loadCategorizationRules();
+    });
   }
 
   resetRuleForm(): void {
@@ -682,13 +574,13 @@ export class App implements OnInit {
     );
     if (!confirmed) return;
 
-    this.http.delete(`${API_BASE}/invoices/${invoice.id}`, this.authOptions()).subscribe(() => {
+    this.invoiceApi.deleteInvoice(invoice.id).subscribe(() => {
       if (this.selectedInvoiceId() === invoice.id) {
         this.selectedInvoiceId.set(null);
         this.transactions.set([]);
       }
       this.refreshAll();
-      this.uploadMessage.set('Fatura excluida.');
+      this.uploadMessage.set('Fatura excluída.');
     });
   }
 
@@ -717,16 +609,12 @@ export class App implements OnInit {
       return;
     }
 
-    this.http
-      .patch(
-        `${API_BASE}/transactions/${transaction.id}/category`,
-        {
-          categoryId,
-          mode: 'single',
-          rulePattern: null,
-        },
-        this.authOptions(),
-      )
+    this.invoiceApi
+      .updateTransactionCategory(transaction.id, {
+        categoryId,
+        mode: 'single',
+        rulePattern: null,
+      })
       .subscribe(() => {
         this.transactions.update((transactions) =>
           transactions.map((item) =>
@@ -776,16 +664,12 @@ export class App implements OnInit {
     const pattern = current?.pattern.trim();
     if (!current || !pattern) return;
 
-    this.http
-      .post(
-        `${API_BASE}/categorization-rules`,
-        {
-          matchType: 'contains',
-          pattern,
-          categoryId: current.categoryId,
-        },
-        this.authOptions(),
-      )
+    this.invoiceApi
+      .createRule({
+        matchType: 'contains',
+        pattern,
+        categoryId: current.categoryId,
+      })
       .subscribe(() => {
         this.pendingRule.set(null);
         const selected = this.selectedInvoiceId();
@@ -874,26 +758,15 @@ export class App implements OnInit {
   ): void {
     if (ids.length === 0) return;
 
-    this.http
-      .post<{ updated: number }>(
-        `${API_BASE}/transactions/bulk-categorize`,
-        {
-          transactionIds: ids,
-          categoryId,
-        },
-        this.authOptions(),
-      )
-      .subscribe(() => {
-        this.transactions.update((transactions) =>
-          transactions.map((transaction) =>
-            ids.includes(transaction.id)
-              ? { ...transaction, categoryId, categoryName }
-              : transaction,
-          ),
-        );
-        this.loadDashboard();
-        afterApply?.();
-      });
+    this.invoiceApi.bulkCategorize(ids, categoryId).subscribe(() => {
+      this.transactions.update((transactions) =>
+        transactions.map((transaction) =>
+          ids.includes(transaction.id) ? { ...transaction, categoryId, categoryName } : transaction,
+        ),
+      );
+      this.loadDashboard();
+      afterApply?.();
+    });
   }
 
   private applyAuthResponse(response: AuthResponse): void {
@@ -905,10 +778,6 @@ export class App implements OnInit {
     this.authMessage.set('');
     this.uploadMessage.set('');
     this.refreshAll();
-  }
-
-  private authOptions(): { headers: { Authorization: string } } {
-    return { headers: { Authorization: `Bearer ${this.token()}` } };
   }
 
   private readStoredUser(): User | null {
