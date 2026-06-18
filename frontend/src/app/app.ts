@@ -71,6 +71,21 @@ type CategorySummary = {
   count: number;
 };
 
+type CategoryComparison = CategorySummary & {
+  previousTotal: number;
+  previousCount: number;
+  delta: number;
+  percentage: number | null;
+  share: number;
+};
+
+type CategoryInsight = {
+  label: string;
+  categoryName: string;
+  value: string;
+  tone: 'neutral' | 'up' | 'down';
+};
+
 type User = {
   id: string;
   name: string;
@@ -104,6 +119,7 @@ export class App implements OnInit {
   categories = signal<Category[]>([]);
   categorizationRules = signal<CategorizationRule[]>([]);
   categorySummary = signal<CategorySummary[]>([]);
+  previousCategorySummary = signal<CategorySummary[]>([]);
   monthlySummary = signal<MonthlySummary | null>(null);
   monthComparison = signal<MonthComparison | null>(null);
   selectedInvoiceId = signal<string | null>(null);
@@ -158,6 +174,9 @@ export class App implements OnInit {
   });
 
   dashboardPeriodLabel = computed(() => this.formatPeriodLabel(this.dashboardPeriod()));
+  previousDashboardPeriodLabel = computed(() =>
+    this.formatPeriodLabel(this.previousDashboardPeriodValue()),
+  );
 
   selectedInvoice = computed(
     () => this.invoices().find((invoice) => invoice.id === this.selectedInvoiceId()) ?? null,
@@ -219,8 +238,91 @@ export class App implements OnInit {
   });
 
   dashboardCategoryProgressMax = computed(() =>
-    Math.max(...this.categorySummary().map((item) => Math.abs(item.total)), 0),
+    Math.max(
+      ...this.categoryComparisonRows().flatMap((item) => [
+        Math.abs(item.total),
+        Math.abs(item.previousTotal),
+      ]),
+      0,
+    ),
   );
+
+  categoryComparisonRows = computed<CategoryComparison[]>(() => {
+    const previousByKey = new Map(
+      this.previousCategorySummary().map((item) => [this.categorySummaryKey(item), item]),
+    );
+    const currentTotal = this.categorySummary()
+      .filter((item) => item.total > 0)
+      .reduce((total, item) => total + item.total, 0);
+
+    return this.categorySummary()
+      .map((item) => {
+        const previous = previousByKey.get(this.categorySummaryKey(item));
+        const previousTotal = previous?.total ?? 0;
+        const delta = item.total - previousTotal;
+        return {
+          ...item,
+          previousTotal,
+          previousCount: previous?.count ?? 0,
+          delta,
+          percentage:
+            previousTotal === 0 ? null : Math.round((delta / Math.abs(previousTotal)) * 1000) / 10,
+          share: currentTotal > 0 && item.total > 0 ? (item.total / currentTotal) * 100 : 0,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
+  });
+
+  categoryInsights = computed<CategoryInsight[]>(() => {
+    const rows = this.categoryComparisonRows();
+    if (!rows.length) return [];
+
+    const highest = rows.reduce((best, item) => (item.total > best.total ? item : best), rows[0]);
+    const biggestIncrease = rows.reduce(
+      (best, item) => (item.delta > best.delta ? item : best),
+      rows[0],
+    );
+    const biggestDecrease = rows.reduce(
+      (best, item) => (item.delta < best.delta ? item : best),
+      rows[0],
+    );
+
+    const insights: CategoryInsight[] = [
+      {
+        label: 'Maior gasto',
+        categoryName: highest.categoryName,
+        value: this.formatCurrency(highest.total),
+        tone: 'neutral',
+      },
+    ];
+
+    if (biggestIncrease.delta > 0) {
+      insights.push({
+        label: 'Maior alta',
+        categoryName: biggestIncrease.categoryName,
+        value: this.formatSignedCurrency(biggestIncrease.delta),
+        tone: 'up',
+      });
+    }
+
+    if (biggestDecrease.delta < 0) {
+      insights.push({
+        label: 'Maior queda',
+        categoryName: biggestDecrease.categoryName,
+        value: this.formatSignedCurrency(biggestDecrease.delta),
+        tone: 'down',
+      });
+    }
+
+    insights.push({
+      label: 'Categorias ativas',
+      categoryName: `${rows.length}`,
+      value: `${rows.reduce((total, item) => total + item.count, 0)} lançamentos`,
+      tone: 'neutral',
+    });
+
+    return insights;
+  });
 
   recentInvoices = computed(() => this.invoices().slice(0, 5));
 
@@ -439,12 +541,19 @@ export class App implements OnInit {
 
   loadDashboard(): void {
     const params = this.dashboardPeriodParams();
+    const previousParams = this.dashboardPeriodParams(this.previousDashboardPeriodValue());
     this.http
       .get<MonthlySummary>(`${API_BASE}/dashboard/monthly-summary${params}`, this.authOptions())
       .subscribe((summary) => this.monthlySummary.set(summary));
     this.http
       .get<CategorySummary[]>(`${API_BASE}/dashboard/category-summary${params}`, this.authOptions())
       .subscribe((summary) => this.categorySummary.set(summary));
+    this.http
+      .get<CategorySummary[]>(
+        `${API_BASE}/dashboard/category-summary${previousParams}`,
+        this.authOptions(),
+      )
+      .subscribe((summary) => this.previousCategorySummary.set(summary));
     this.http
       .get<MonthComparison>(`${API_BASE}/dashboard/month-comparison${params}`, this.authOptions())
       .subscribe((comparison) => this.monthComparison.set(comparison));
@@ -877,6 +986,46 @@ export class App implements OnInit {
     return max ? Math.max(4, Math.round((Math.abs(value) / max) * 100)) : 0;
   }
 
+  categoryDeltaLabel(item: CategoryComparison): string {
+    if (!this.previousCategorySummary().length) return 'Sem dados do período anterior';
+    if (item.delta === 0) return 'Sem variação';
+    return `${this.formatSignedCurrency(item.delta)} vs período anterior`;
+  }
+
+  categoryPercentageLabel(item: CategoryComparison): string {
+    if (!this.previousCategorySummary().length) return 'sem base';
+    if (item.percentage === null) return item.total === 0 ? '0%' : 'novo';
+    if (item.percentage === 0) return '0%';
+    const formatted = new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(Math.abs(item.percentage));
+    return `${item.percentage > 0 ? '+' : '-'}${formatted}%`;
+  }
+
+  categoryTrendClass(item: CategoryComparison): string {
+    if (item.delta > 0) return 'up';
+    if (item.delta < 0) return 'down';
+    return 'flat';
+  }
+
+  categoryRowTag(item: CategoryComparison): string {
+    const rows = this.categoryComparisonRows();
+    if (!rows.length) return '';
+    const highest = rows.reduce((best, row) => (row.total > best.total ? row : best), rows[0]);
+    const increase = rows.reduce((best, row) => (row.delta > best.delta ? row : best), rows[0]);
+    const decrease = rows.reduce((best, row) => (row.delta < best.delta ? row : best), rows[0]);
+
+    if (this.categorySummaryKey(item) === this.categorySummaryKey(highest)) return 'Maior gasto';
+    if (increase.delta > 0 && this.categorySummaryKey(item) === this.categorySummaryKey(increase)) {
+      return 'Maior alta';
+    }
+    if (decrease.delta < 0 && this.categorySummaryKey(item) === this.categorySummaryKey(decrease)) {
+      return 'Maior queda';
+    }
+    return '';
+  }
+
   invoiceStatusLabel(status: string): string {
     const normalized = status.toLowerCase();
     const labels: Record<string, string> = {
@@ -967,9 +1116,19 @@ export class App implements OnInit {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  private dashboardPeriodParams(): string {
-    const [year, month] = this.dashboardPeriod().split('-');
+  private dashboardPeriodParams(value = this.dashboardPeriod()): string {
+    const [year, month] = value.split('-');
     return `?month=${Number(month)}&year=${Number(year)}`;
+  }
+
+  private previousDashboardPeriodValue(): string {
+    const [year, month] = this.dashboardPeriod().split('-').map(Number);
+    const previous = new Date(year, month - 2, 1);
+    return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private categorySummaryKey(item: Pick<CategorySummary, 'categoryId' | 'categoryName'>): string {
+    return item.categoryId ?? this.normalizeFilterValue(item.categoryName);
   }
 
   formatPeriodLabel(value: string): string {

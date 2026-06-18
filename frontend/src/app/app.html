@@ -252,7 +252,7 @@
               <div class="panel-title">
                 <div>
                   <h2>Resumo por categoria</h2>
-                  <p>{{ dashboardPeriodLabel() }}</p>
+                  <p>{{ dashboardPeriodLabel() }} vs {{ previousDashboardPeriodLabel() }}</p>
                 </div>
               </div>
               @if (othersInsight(); as insight) {
@@ -266,18 +266,67 @@
                   </button>
                 </div>
               }
+              @if (categoryInsights().length) {
+                <div class="category-insights" aria-label="Destaques por categoria">
+                  @for (insight of categoryInsights(); track insight.label) {
+                    <article class="category-insight-card" [class]="insight.tone">
+                      <span>{{ insight.label }}</span>
+                      <strong>{{ insight.categoryName }}</strong>
+                      <small>{{ insight.value }}</small>
+                    </article>
+                  }
+                </div>
+              }
               <div class="category-summary">
-                @for (item of categorySummary(); track item.categoryName) {
-                  <div class="category-summary-row">
+                @for (item of categoryComparisonRows(); track item.categoryName) {
+                  <article class="category-summary-row">
                     <div class="summary-row-main">
-                      <span>{{ item.categoryName }}</span>
-                      <small>{{ item.count }} lançamentos</small>
+                      <div>
+                        <span
+                          class="category-dot"
+                          [style.background]="categoryColor(item.categoryId)"
+                          aria-hidden="true"
+                        ></span>
+                        <strong>{{ item.categoryName }}</strong>
+                        @if (categoryRowTag(item)) {
+                          <em>{{ categoryRowTag(item) }}</em>
+                        }
+                      </div>
+                      <small
+                        >{{ item.count }} lançamentos no período atual
+                        @if (item.share > 0) {
+                          <span>{{ item.share | number: '1.0-0' }}% do gasto</span>
+                        }</small
+                      >
                     </div>
-                    <strong>{{ formatCurrency(item.total) }}</strong>
-                    <div class="progress-track" aria-hidden="true">
-                      <span [style.width.%]="dashboardCategoryProgress(item.total)"></span>
+                    <div class="category-amounts">
+                      <strong>{{ formatCurrency(item.total) }}</strong>
+                      <small>Anterior: {{ formatCurrency(item.previousTotal) }}</small>
                     </div>
-                  </div>
+                    <div class="category-delta" [class]="categoryTrendClass(item)">
+                      <span aria-hidden="true">{{ trendIcon(item.delta) }}</span>
+                      <div>
+                        <strong>{{ categoryPercentageLabel(item) }}</strong>
+                        <small>{{ categoryDeltaLabel(item) }}</small>
+                      </div>
+                    </div>
+                    <div class="category-bars" aria-hidden="true">
+                      <div class="category-bar-row current">
+                        <span>Atual</span>
+                        <div class="progress-track">
+                          <span [style.width.%]="dashboardCategoryProgress(item.total)"></span>
+                        </div>
+                      </div>
+                      <div class="category-bar-row previous">
+                        <span>Anterior</span>
+                        <div class="progress-track">
+                          <span
+                            [style.width.%]="dashboardCategoryProgress(item.previousTotal)"
+                          ></span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
                 } @empty {
                   <p class="empty">Sem dados para o período selecionado.</p>
                 }
@@ -413,7 +462,7 @@
                 </div>
                 <div class="category-summary">
                   @for (item of selectedInvoiceCategorySummary(); track item.categoryName) {
-                    <div class="category-summary-row">
+                    <div class="category-summary-row invoice-category-row">
                       <div class="summary-row-main">
                         <span>{{ item.categoryName }}</span>
                         <small>{{ item.count }} lançamentos</small>
