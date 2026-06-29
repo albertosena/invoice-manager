@@ -1,4 +1,8 @@
+const { hostname, port } = window.location;
+
 export const API_BASE =
-  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? `http://${window.location.hostname}:5000/api`
+  hostname === 'localhost' || hostname === '127.0.0.1'
+    ? port === '4200'
+      ? `http://${hostname}:5000/api`
+      : '/api'
     : '/api';
