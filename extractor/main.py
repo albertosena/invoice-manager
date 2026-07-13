@@ -119,12 +119,14 @@ def extract_reference_date(pdf_path: str) -> tuple[int, int]:
     return today.month, today.year
 
 
-def find_installments_section_y(words) -> float | None:
+def find_installments_section_y(words, min_x: float, max_x: float) -> float | None:
     rows = defaultdict(list)
 
     for x0, y0, _x1, _y1, text, *_ in words:
         text = text.strip()
         if not text:
+            continue
+        if not (min_x <= x0 < max_x):
             continue
 
         y_key = round(y0 / 3) * 3
@@ -144,7 +146,6 @@ def extract_rows_from_page(page, page_number: int):
     words = page.get_text("words")
     page_width = page.rect.width
     transactions = []
-    installments_section_y = find_installments_section_y(words)
 
     columns = [
         ("esquerda", page_width * 0.25, page_width * 0.58),
@@ -152,7 +153,9 @@ def extract_rows_from_page(page, page_number: int):
     ]
 
     for column_name, min_x, max_x in columns:
+        installments_section_y = find_installments_section_y(words, min_x, max_x)
         rows = defaultdict(list)
+        last_transaction_date = None
 
         for x0, y0, _x1, _y1, text, *_ in words:
             text = text.strip()
@@ -180,10 +183,29 @@ def extract_rows_from_page(page, page_number: int):
             date_index = next((i for i, part in enumerate(parts) if date_re.match(part)), None)
             value_index = next((i for i in range(len(parts) - 1, -1, -1) if value_re.match(parts[i])), None)
 
-            if date_index is None or value_index is None or value_index <= date_index:
+            if date_index is None:
+                description = " ".join(parts[:value_index]).strip() if value_index is not None else ""
+                if normalize_text(description).startswith("repasse de iof") and last_transaction_date:
+                    amount = normalize_value(parts[value_index])
+                    transactions.append(
+                        {
+                            "page": page_number,
+                            "column": column_name,
+                            "y": y,
+                            "date": last_transaction_date,
+                            "description": description,
+                            "rawCategory": "",
+                            "amount": amount,
+                            "type": "credito" if amount < 0 else "debito",
+                        }
+                    )
+                continue
+
+            if value_index is None or value_index <= date_index:
                 continue
 
             date = parts[date_index]
+            last_transaction_date = date
             description, amount = parse_description_and_value(parts, date_index, value_index)
 
             normalized_description = normalize_text(description)
