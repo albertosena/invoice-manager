@@ -11,6 +11,23 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (!builder.Environment.IsDevelopment() &&
+    (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32))
+{
+    throw new InvalidOperationException(
+        "Jwt:Key must be explicitly configured with at least 32 characters outside Development.");
+}
+
+jwtKey ??= "invoice-manager-development-key-change-me";
+
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(defaultConnection))
+{
+    throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection must be explicitly configured outside Development.");
+}
+
 builder.Services.AddOpenApi();
 builder.Services.AddCors(options =>
 {
@@ -30,7 +47,6 @@ builder.Services.AddCors(options =>
         policy.AllowAnyHeader().AllowAnyMethod().WithOrigins(allowedOrigins));
 });
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "invoice-manager-development-key-change-me";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "invoice-manager";
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
@@ -52,7 +68,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(defaultConnection));
 
 builder.Services.AddHttpClient<ExtractorClient>(client =>
 {
@@ -75,7 +91,10 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await WaitForDatabaseAsync(db);
-    await SeedData.EnsureSeededAsync(db);
+    if (app.Environment.IsDevelopment())
+    {
+        await SeedData.EnsureSeededAsync(db);
+    }
     await RepairCategorizationRulePatternsAsync(db);
 }
 
