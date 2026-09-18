@@ -782,24 +782,61 @@
               </section>
 
               <section class="panel invoice-cat-panel">
-                <div class="panel-title">
-                  <div>
-                    <h2>Resumo por categoria</h2>
+                <div class="panel-title sidebar-panel-title">
+                  <div class="title-with-pill">
+                    <div class="title-row">
+                      <h2>Resumo por categoria</h2>
+                      @if (selectedInvoiceCategorySummary().length) {
+                        <span class="count-pill">{{ selectedInvoiceCategorySummary().length }}</span>
+                      }
+                    </div>
                     @if (selectedInvoice()) {
-                      <p>{{ selectedInvoice()?.originalFileName }}</p>
+                      <p class="invoice-subtitle-label" [title]="selectedInvoice()?.originalFileName">
+                        {{ selectedInvoice()?.originalFileName }}
+                      </p>
+                    } @else {
+                      <p>Selecione uma fatura para ver o resumo</p>
                     }
                   </div>
                 </div>
-                <div class="category-summary">
+
+                <div class="sidebar-cat-list category-summary">
                   @for (item of selectedInvoiceCategorySummary(); track item.categoryName) {
-                    <div class="category-summary-row invoice-category-row">
-                      <div class="summary-row-main">
-                        <span>{{ item.categoryName }}</span>
-                        <small>{{ item.count }} lançamentos</small>
+                    <div
+                      class="sidebar-cat-card category-summary-row invoice-category-row"
+                      [class.is-credit]="isCreditCategory(item)"
+                    >
+                      <div class="cat-card-header summary-row-main">
+                        <div class="cat-name-group">
+                          <span
+                            class="cat-dot"
+                            [style.background-color]="getCategoryColor(item.categoryId, item.categoryName)"
+                            aria-hidden="true"
+                          ></span>
+                          <span class="cat-title" [title]="item.categoryName">{{ item.categoryName }}</span>
+                        </div>
+                        <strong class="cat-amount tabular-nums" [class.credit-amount]="isCreditCategory(item)">
+                          {{ formatCurrency(item.total) }}
+                        </strong>
                       </div>
-                      <strong class="tabular-nums">{{ formatCurrency(item.total) }}</strong>
-                      <div class="progress-track" aria-hidden="true">
-                        <span [style.width.%]="categoryProgress(item.total)"></span>
+
+                      <div class="cat-card-sub">
+                        <span class="cat-count">
+                          {{ item.count }} {{ item.count === 1 ? 'lançamento' : 'lançamentos' }}
+                        </span>
+                        @if (selectedInvoiceSummary().totalSpent > 0 && item.total > 0) {
+                          <span class="cat-share">
+                            {{ getCategoryInvoicePercentage(item.total) }}% da fatura
+                          </span>
+                        }
+                      </div>
+
+                      <div class="cat-progress-bar progress-track" aria-hidden="true">
+                        <span
+                          class="cat-progress-fill"
+                          [style.width.%]="categoryProgress(item.total)"
+                          [style.background-color]="getCategoryColor(item.categoryId, item.categoryName)"
+                        ></span>
                       </div>
                     </div>
                   } @empty {

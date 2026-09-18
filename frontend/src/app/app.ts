@@ -810,6 +810,52 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     return name.includes('nubank') || bank.includes('nubank');
   }
 
+  getCategoryColor(categoryId?: string | null, categoryName?: string): string {
+    if (categoryId) {
+      const cat = this.categories().find((c) => c.id === categoryId);
+      if (cat?.color) return cat.color;
+    }
+    if (categoryName) {
+      const cat = this.categories().find(
+        (c) => c.name.toLowerCase() === categoryName.toLowerCase(),
+      );
+      if (cat?.color) return cat.color;
+      const lower = categoryName.toLowerCase();
+      if (lower.includes('crédito') || lower.includes('credito') || lower.includes('estorno')) {
+        return '#10b981';
+      }
+      if (lower.includes('farmácia') || lower.includes('farmacia') || lower.includes('saúde') || lower.includes('saude')) {
+        return '#06b6d4';
+      }
+      if (lower.includes('alimentação') || lower.includes('alimentacao') || lower.includes('restaurante') || lower.includes('ifood')) {
+        return '#f97316';
+      }
+      if (lower.includes('transporte') || lower.includes('uber') || lower.includes('posto')) {
+        return '#3b82f6';
+      }
+      if (lower.includes('outros') || lower.includes('sem categoria')) {
+        return '#64748b';
+      }
+    }
+    return '#6366f1';
+  }
+
+  getCategoryInvoicePercentage(amount: number): string {
+    const total = this.selectedInvoiceSummary().totalSpent;
+    if (!total || total <= 0) return '0';
+    const pct = (Math.abs(amount) / total) * 100;
+    return pct >= 10 ? pct.toFixed(0) : pct.toFixed(1);
+  }
+
+  isCreditCategory(item: CategorySummary): boolean {
+    return (
+      item.total < 0 ||
+      (item.categoryName?.toLowerCase().includes('crédito') ?? false) ||
+      (item.categoryName?.toLowerCase().includes('credito') ?? false) ||
+      (item.categoryName?.toLowerCase().includes('estorno') ?? false)
+    );
+  }
+
   loadTransactions(invoiceId: string): void {
     this.selectedInvoiceId.set(invoiceId);
     this.clearTransactionSelection();
