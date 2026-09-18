@@ -34,7 +34,7 @@ import { GoalStatus } from '../../models/invoice.models';
     .progress-track {
       flex: 1;
       height: 8px;
-      background: var(--surface-subtle, #f1f5f9);
+      background: var(--bg-card-muted, #f1f5f9);
       border-radius: 9999px;
       overflow: hidden;
       position: relative;
@@ -64,6 +64,14 @@ import { GoalStatus } from '../../models/invoice.models';
     .progress-text.warning { color: #d97706; }
     .progress-text.danger { color: #dc2626; }
     .progress-text.no_goal { color: #64748b; }
+
+    :host-context([data-theme="dark"]) .progress-track {
+      background: #1f2937;
+    }
+    :host-context([data-theme="dark"]) .progress-text.normal { color: #34d399; }
+    :host-context([data-theme="dark"]) .progress-text.warning { color: #fbbf24; }
+    :host-context([data-theme="dark"]) .progress-text.danger { color: #fb7185; }
+    :host-context([data-theme="dark"]) .progress-text.no_goal { color: #94a3b8; }
   `]
 })
 export class UtilizationBarComponent {

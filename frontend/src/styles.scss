@@ -142,8 +142,8 @@ button, input, select, textarea {
   padding: 0;
   border-radius: var(--radius-sm, 8px);
   border: 1px solid var(--border-color, #e2e8f0);
-  background: #ffffff;
-  color: #64748b;
+  background: var(--bg-card, #ffffff);
+  color: var(--text-muted, #64748b);
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
@@ -156,9 +156,9 @@ button, input, select, textarea {
   }
 
   &:hover {
-    background: #f8fafc;
+    background: var(--bg-hover, #f8fafc);
     color: var(--brand-primary, #4f46e5);
-    border-color: #cbd5e1;
+    border-color: var(--border-hover, #cbd5e1);
   }
 
   &:active {

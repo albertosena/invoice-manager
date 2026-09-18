@@ -133,13 +133,13 @@ export interface GoalModalSaveEvent {
       to { opacity: 1; }
     }
     .modal-dialog {
-      background: #ffffff;
+      background: var(--bg-card, #ffffff);
       border-radius: 16px;
       width: 100%;
       max-width: 480px;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
       overflow: hidden;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--border-color, #e2e8f0);
       animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
     @keyframes slideUp {
@@ -151,24 +151,24 @@ export interface GoalModalSaveEvent {
       align-items: flex-start;
       justify-content: space-between;
       padding: 1.5rem 1.5rem 1rem;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--border-color, #f1f5f9);
     }
     .modal-header h3 {
       font-size: 1.125rem;
       font-weight: 700;
-      color: #0f172a;
+      color: var(--text-main, #0f172a);
       margin: 0;
     }
     .modal-subtitle {
       font-size: 0.8125rem;
-      color: #64748b;
+      color: var(--text-muted, #64748b);
       margin: 0.25rem 0 0;
     }
     .btn-close {
       background: transparent;
       border: none;
       cursor: pointer;
-      color: #94a3b8;
+      color: var(--text-subtle, #94a3b8);
       padding: 0.25rem;
       border-radius: 8px;
       display: flex;
@@ -177,8 +177,8 @@ export interface GoalModalSaveEvent {
       transition: all 0.15s;
     }
     .btn-close:hover {
-      color: #0f172a;
-      background: #f1f5f9;
+      color: var(--text-main, #0f172a);
+      background: var(--bg-hover, #f1f5f9);
     }
     .btn-close svg {
       width: 20px;
@@ -198,15 +198,15 @@ export interface GoalModalSaveEvent {
     .form-group label, .field-label {
       font-size: 0.8125rem;
       font-weight: 600;
-      color: #334155;
+      color: var(--text-muted, #334155);
     }
     .form-control {
       padding: 0.625rem 0.875rem;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--border-color, #cbd5e1);
       border-radius: 8px;
       font-size: 0.875rem;
-      color: #0f172a;
-      background: #ffffff;
+      color: var(--text-main, #0f172a);
+      background: var(--bg-card, #ffffff);
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
       width: 100%;
@@ -226,7 +226,7 @@ export interface GoalModalSaveEvent {
       left: 0.875rem;
       font-size: 0.875rem;
       font-weight: 600;
-      color: #64748b;
+      color: var(--text-muted, #64748b);
       pointer-events: none;
     }
     .currency-input {
@@ -236,16 +236,16 @@ export interface GoalModalSaveEvent {
     }
     .field-hint {
       font-size: 0.75rem;
-      color: #64748b;
+      color: var(--text-muted, #64748b);
     }
     .static-value-badge {
       padding: 0.5rem 0.75rem;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      background: var(--bg-card-muted, #f8fafc);
+      border: 1px solid var(--border-color, #e2e8f0);
       border-radius: 8px;
       font-size: 0.875rem;
       font-weight: 600;
-      color: #1e293b;
+      color: var(--text-main, #1e293b);
     }
     .modal-actions {
       display: flex;
@@ -254,22 +254,22 @@ export interface GoalModalSaveEvent {
       gap: 0.75rem;
       margin-top: 0.75rem;
       padding-top: 1rem;
-      border-top: 1px solid #f1f5f9;
+      border-top: 1px solid var(--border-color, #f1f5f9);
     }
     .btn-cancel {
       padding: 0.625rem 1rem;
       background: transparent;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--border-color, #cbd5e1);
       border-radius: 8px;
       font-size: 0.875rem;
       font-weight: 600;
-      color: #475569;
+      color: var(--text-muted, #475569);
       cursor: pointer;
       transition: all 0.15s;
     }
     .btn-cancel:hover {
-      background: #f8fafc;
-      color: #0f172a;
+      background: var(--bg-hover, #f8fafc);
+      color: var(--text-main, #0f172a);
     }
     .btn-save {
       padding: 0.625rem 1.25rem;
@@ -288,6 +288,15 @@ export interface GoalModalSaveEvent {
     .btn-save:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+    :host-context([data-theme="dark"]) .form-control {
+      background: #162032;
+      border-color: #334155;
+      color: #f8fafc;
+    }
+    :host-context([data-theme="dark"]) .form-control option {
+      background: #111827;
+      color: #f8fafc;
     }
   `]
 })
