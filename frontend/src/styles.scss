@@ -83,6 +83,44 @@ button, input, select, textarea {
   font-variant-numeric: tabular-nums;
 }
 
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-xs);
+
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+  }
+
+  &:hover {
+    background: #f8fafc;
+    color: var(--brand-primary, #4f46e5);
+    border-color: #cbd5e1;
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+
+  &.spinning svg,
+  &.is-spinning svg {
+    animation: spin 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

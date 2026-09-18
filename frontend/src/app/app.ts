@@ -105,6 +105,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     pattern: string;
     transactionIds?: string[];
   } | null>(null);
+  refreshingInvoices = signal(false);
 
   // Nubank CSV import state
   showNubankPreviewModal = signal(false);
@@ -788,12 +789,25 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   loadInvoices(): void {
-    this.invoiceApi.getInvoices().subscribe((invoices) => {
-      this.invoices.set(invoices);
-      if (this.activePage() === 'dashboard' && !this.categorySummary().length) {
-        this.loadCategorySummaryFallback(this.dashboardPeriod(), true);
-      }
+    this.refreshingInvoices.set(true);
+    this.invoiceApi.getInvoices().subscribe({
+      next: (invoices) => {
+        this.invoices.set(invoices);
+        if (this.activePage() === 'dashboard' && !this.categorySummary().length) {
+          this.loadCategorySummaryFallback(this.dashboardPeriod(), true);
+        }
+        setTimeout(() => this.refreshingInvoices.set(false), 400);
+      },
+      error: () => {
+        this.refreshingInvoices.set(false);
+      },
     });
+  }
+
+  isNubankInvoice(invoice: Invoice): boolean {
+    const name = (invoice.originalFileName || '').toLowerCase();
+    const bank = (invoice.bankName || '').toLowerCase();
+    return name.includes('nubank') || bank.includes('nubank');
   }
 
   loadTransactions(invoiceId: string): void {

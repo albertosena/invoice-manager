@@ -686,19 +686,24 @@
 
           <section class="workspace" #invoiceWorkspace>
             <aside class="dashboard-sidebar" #invoiceSidebar>
-              <section class="panel invoices">
-                <div class="panel-title">
-                  <div>
-                    <h2>Faturas</h2>
-                    <p>{{ invoices().length }} importadas</p>
+              <section class="panel invoices-sidebar-panel">
+                <div class="panel-title sidebar-panel-title">
+                  <div class="title-with-pill">
+                    <div class="title-row">
+                      <h2>Faturas</h2>
+                      <span class="count-pill">{{ invoices().length }}</span>
+                    </div>
+                    <p>{{ invoices().length === 1 ? '1 fatura importada' : invoices().length + ' faturas importadas' }}</p>
                   </div>
                   <button
                     type="button"
-                    class="icon-button"
+                    class="icon-button refresh-btn"
+                    [class.spinning]="refreshingInvoices()"
                     (click)="loadInvoices()"
-                    title="Atualizar faturas"
+                    title="Atualizar lista de faturas"
+                    aria-label="Atualizar lista de faturas"
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                       <polyline points="23 4 23 10 17 10"/>
                       <polyline points="1 20 1 14 7 14"/>
                       <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
@@ -706,41 +711,72 @@
                   </button>
                 </div>
 
-                <div class="invoice-list">
+                <div class="sidebar-invoice-list invoice-list">
                   @for (invoice of invoices(); track invoice.id) {
-                    <div class="invoice-row" [class.active]="invoice.id === selectedInvoiceId()">
+                    <div
+                      class="sidebar-invoice-card invoice-row"
+                      [class.active]="invoice.id === selectedInvoiceId()"
+                    >
                       <button
                         type="button"
-                        class="invoice-item"
+                        class="invoice-select-action invoice-item"
                         (click)="loadTransactions(invoice.id)"
+                        [title]="'Selecionar fatura: ' + invoice.originalFileName"
                       >
-                        <span class="invoice-name">{{ invoice.originalFileName }}</span>
-                        <small>
-                          {{
-                            formatPeriodLabel(
-                              invoice.referenceYear +
-                                '-' +
-                                (invoice.referenceMonth < 10 ? '0' : '') +
-                                invoice.referenceMonth
-                            )
-                          }}
-                          - {{ invoice.transactionCount }} itens
-                        </small>
+                        <div
+                          class="invoice-file-icon"
+                          [class.nubank-icon]="isNubankInvoice(invoice)"
+                          aria-hidden="true"
+                        >
+                          @if (isNubankInvoice(invoice)) {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect width="20" height="14" x="2" y="5" rx="2"/>
+                              <line x1="2" y1="10" x2="22" y2="10"/>
+                            </svg>
+                          } @else {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                              <line x1="16" y1="13" x2="8" y2="13"/>
+                              <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                          }
+                        </div>
+                        <div class="invoice-text-info">
+                          <span class="invoice-display-name invoice-name" [title]="invoice.originalFileName">
+                            {{ invoice.originalFileName }}
+                          </span>
+                          <div class="invoice-sub-meta">
+                            <span class="period-text">
+                              {{
+                                formatPeriodLabel(
+                                  invoice.referenceYear +
+                                    '-' +
+                                    (invoice.referenceMonth < 10 ? '0' : '') +
+                                    invoice.referenceMonth
+                                )
+                              }}
+                            </span>
+                            <span class="meta-separator">•</span>
+                            <span class="items-count-text">{{ invoice.transactionCount }} itens</span>
+                          </div>
+                        </div>
                       </button>
                       <button
                         type="button"
-                        class="danger-icon"
+                        class="invoice-delete-action danger-icon"
                         (click)="deleteInvoice(invoice, $event)"
                         title="Excluir fatura"
+                        aria-label="Excluir fatura"
                       >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                           <polyline points="3 6 5 6 21 6"/>
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                         </svg>
                       </button>
                     </div>
                   } @empty {
-                    <p class="empty boxed-empty">Importe uma fatura PDF para começar.</p>
+                    <p class="empty boxed-empty">Importe uma fatura PDF ou CSV para começar.</p>
                   }
                 </div>
               </section>
