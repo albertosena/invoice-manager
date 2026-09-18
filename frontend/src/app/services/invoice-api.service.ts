@@ -8,6 +8,9 @@ import {
   Invoice,
   MonthComparison,
   MonthlySummary,
+  NubankCsvConfirmRequest,
+  NubankCsvConfirmResponse,
+  NubankCsvPreviewResponse,
   Transaction,
   UploadInvoiceResponse,
 } from '../models/invoice.models';
@@ -18,6 +21,16 @@ export class InvoiceApiService {
 
   uploadInvoice(data: FormData) {
     return this.http.post<UploadInvoiceResponse>(`${API_BASE}/invoices/upload`, data);
+  }
+
+  previewNubankCsv(file: File) {
+    const data = new FormData();
+    data.append('file', file);
+    return this.http.post<NubankCsvPreviewResponse>(`${API_BASE}/invoices/nubank-csv/preview`, data);
+  }
+
+  confirmNubankCsv(payload: NubankCsvConfirmRequest) {
+    return this.http.post<NubankCsvConfirmResponse>(`${API_BASE}/invoices/nubank-csv/confirm`, payload);
   }
 
   getInvoices() {

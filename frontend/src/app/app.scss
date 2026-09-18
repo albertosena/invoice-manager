@@ -2085,3 +2085,17 @@ button:focus-visible, select:focus-visible, input:focus-visible, .upload-button:
     grid-row: 3;
   }
 }
+
+/* Nubank CSV Import Styles */
+.upload-button.csv-button {
+  background: #820ad1;
+  border-color: #820ad1;
+  color: #ffffff;
+
+  &:hover {
+    background: #6d08b0;
+    border-color: #6d08b0;
+  }
+}
+
+
