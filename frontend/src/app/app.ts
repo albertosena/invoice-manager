@@ -1518,13 +1518,39 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   categoryProgress(value: number): number {
+    if (!value || value <= 0) return 0;
     const max = this.selectedInvoiceCategoryProgress();
-    return max ? Math.max(4, Math.round((Math.abs(value) / max) * 100)) : 0;
+    return max ? Math.max(3, Math.min(100, Math.round((Math.abs(value) / max) * 100))) : 0;
   }
 
   dashboardCategoryProgress(value: number): number {
+    if (!value || value <= 0) return 0;
     const max = this.dashboardCategoryProgressMax();
-    return max ? Math.max(4, Math.round((Math.abs(value) / max) * 100)) : 0;
+    return max ? Math.max(3, Math.min(100, Math.round((Math.abs(value) / max) * 100))) : 0;
+  }
+
+  categoryGoalPercent(item: CategoryComparison): number {
+    if (!item.monthlyGoal || item.monthlyGoal <= 0) return 0;
+    return Math.round((item.total / item.monthlyGoal) * 100);
+  }
+
+  categoryGoalStatusText(item: CategoryComparison): string {
+    if (!item.monthlyGoal || item.monthlyGoal <= 0) return '';
+    const pct = this.categoryGoalPercent(item);
+    const diff = item.monthlyGoal - item.total;
+    if (diff >= 0) {
+      return `${pct}% da meta utilizada • ${this.formatCurrency(diff)} disponíveis`;
+    } else {
+      return `${pct}% da meta • Limite ultrapassado em ${this.formatCurrency(Math.abs(diff))}`;
+    }
+  }
+
+  categoryGoalStatusClass(item: CategoryComparison): 'good' | 'warning' | 'danger' {
+    if (!item.monthlyGoal || item.monthlyGoal <= 0) return 'good';
+    const pct = (item.total / item.monthlyGoal) * 100;
+    if (pct >= 100) return 'danger';
+    if (pct >= 80) return 'warning';
+    return 'good';
   }
 
   categoryDeltaLabel(item: CategoryComparison): string {

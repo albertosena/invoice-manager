@@ -530,61 +530,106 @@
               <div class="category-summary">
                 @for (item of categoryComparisonRows(); track item.categoryName) {
                   <article class="category-summary-row">
-                    <div class="summary-row-main">
-                      <div class="cat-header">
-                        <span
-                          class="category-dot"
-                          [style.background]="categoryColor(item.categoryId)"
+                    <!-- Top section: Category Identity & Primary Metrics -->
+                    <div class="category-card-top">
+                      <div class="category-card-identity">
+                        <div
+                          class="category-icon-badge"
+                          [style.background-color]="getCategoryColor(item.categoryId, item.categoryName) + '1a'"
+                          [style.border-color]="getCategoryColor(item.categoryId, item.categoryName) + '40'"
                           aria-hidden="true"
-                        ></span>
-                        <strong>{{ item.categoryName }}</strong>
-                        @if (categoryRowTag(item)) {
-                          <em>{{ categoryRowTag(item) }}</em>
-                        }
-                      </div>
-                      <small>
-                        {{ item.count }} lançamentos no período atual
-                        @if (item.share > 0) {
-                          <span class="share-badge">{{ item.share | number: '1.0-0' }}% do gasto</span>
-                        }
-                      </small>
-                    </div>
-                    <div class="category-amounts">
-                      <strong class="tabular-nums">{{ formatCurrency(item.total) }}</strong>
-                      <small class="tabular-nums">Anterior: {{ formatCurrency(item.previousTotal) }}</small>
-                      @if (item.monthlyGoal > 0) {
-                        <small class="tabular-nums goal-hint">Meta: {{ formatCurrency(item.monthlyGoal) }}</small>
-                      }
-                    </div>
-                    <div class="category-delta" [class]="categoryTrendClass(item)">
-                      <span aria-hidden="true">{{ trendIcon(item.delta) }}</span>
-                      <div>
-                        <strong class="tabular-nums">{{ categoryPercentageLabel(item) }}</strong>
-                        <small class="tabular-nums">{{ categoryDeltaLabel(item) }}</small>
-                      </div>
-                    </div>
-                    <div class="category-bars" aria-hidden="true">
-                      <div class="category-bar-row current">
-                        <span>Atual</span>
-                        <div class="progress-track">
+                        >
                           <span
-                            [style.width.%]="dashboardCategoryProgress(item.total)"
-                            [style.background]="categoryColor(item.categoryId)"
+                            class="category-color-dot"
+                            [style.background-color]="getCategoryColor(item.categoryId, item.categoryName)"
                           ></span>
                         </div>
-                      </div>
-                      <div class="category-bar-row previous">
-                        <span>Anterior</span>
-                        <div class="progress-track">
-                          <span [style.width.%]="dashboardCategoryProgress(item.previousTotal)"></span>
+                        <div class="category-title-info">
+                          <div class="category-name-line">
+                            <strong class="category-name-text">{{ item.categoryName }}</strong>
+                            @if (categoryRowTag(item)) {
+                              <span class="category-tag-pill">{{ categoryRowTag(item) }}</span>
+                            }
+                          </div>
+                          <div class="category-meta-line">
+                            <span class="category-count-text">
+                              {{ item.count }} {{ item.count === 1 ? 'lançamento' : 'lançamentos' }} no período
+                            </span>
+                            @if (item.share > 0) {
+                              <span class="category-share-pill">{{ item.share | number: '1.0-0' }}% do gasto</span>
+                            }
+                          </div>
                         </div>
                       </div>
-                      @if (item.monthlyGoal > 0) {
-                        <div class="category-bar-row goal">
-                          <span>Meta</span>
-                          <div class="progress-track">
-                            <span [style.width.%]="dashboardCategoryProgress(item.monthlyGoal)"></span>
+
+                      <div class="category-card-metrics">
+                        <div class="category-total-box">
+                          <strong class="category-total-num tabular-nums">{{ formatCurrency(item.total) }}</strong>
+                          <span class="category-delta-pill" [class]="categoryTrendClass(item)">
+                            <span class="delta-arrow-sym" aria-hidden="true">{{ trendIcon(item.delta) }}</span>
+                            <span class="delta-pct tabular-nums">{{ categoryPercentageLabel(item) }}</span>
+                          </span>
+                        </div>
+                        <div class="category-secondary-metrics">
+                          <span class="metric-note prev-note tabular-nums">
+                            Anterior: <b>{{ formatCurrency(item.previousTotal) }}</b>
+                          </span>
+                          @if (item.monthlyGoal > 0) {
+                            <span class="metric-dot-sep">•</span>
+                            <span class="metric-note goal-note tabular-nums" [class]="categoryGoalStatusClass(item)">
+                              Meta: <b>{{ formatCurrency(item.monthlyGoal) }}</b>
+                            </span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Visual Progress & Comparison Section with Inline Values -->
+                    <div class="category-card-bars" aria-hidden="true">
+                      <div class="bar-comparison-row is-current">
+                        <span class="bar-label">Atual</span>
+                        <div class="bar-track-shell">
+                          <div class="bar-track">
+                            <span
+                              class="bar-fill"
+                              [style.width.%]="dashboardCategoryProgress(item.total)"
+                              [style.background-color]="getCategoryColor(item.categoryId, item.categoryName)"
+                            ></span>
                           </div>
+                        </div>
+                        <strong class="bar-amount-value tabular-nums">{{ formatCurrency(item.total) }}</strong>
+                      </div>
+
+                      <div class="bar-comparison-row is-previous">
+                        <span class="bar-label">Anterior</span>
+                        <div class="bar-track-shell">
+                          <div class="bar-track">
+                            <span
+                              class="bar-fill prev-fill"
+                              [style.width.%]="dashboardCategoryProgress(item.previousTotal)"
+                            ></span>
+                          </div>
+                        </div>
+                        <span class="bar-amount-value tabular-nums">{{ formatCurrency(item.previousTotal) }}</span>
+                      </div>
+
+                      @if (item.monthlyGoal > 0) {
+                        <div class="bar-comparison-row is-goal">
+                          <span class="bar-label">Meta</span>
+                          <div class="bar-track-shell">
+                            <div class="bar-track">
+                              <span
+                                class="bar-fill goal-fill"
+                                [style.width.%]="dashboardCategoryProgress(item.monthlyGoal)"
+                              ></span>
+                            </div>
+                          </div>
+                          <span class="bar-amount-value goal-val tabular-nums">{{ formatCurrency(item.monthlyGoal) }}</span>
+                        </div>
+
+                        <div class="category-goal-status-strip" [class]="categoryGoalStatusClass(item)">
+                          <span class="status-dot"></span>
+                          <span class="status-text">{{ categoryGoalStatusText(item) }}</span>
                         </div>
                       }
                     </div>

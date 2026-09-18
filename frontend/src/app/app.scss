@@ -1567,22 +1567,324 @@
 }
 
 .category-summary-row {
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-radius: var(--radius-md, 12px);
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
-  display: grid;
-  grid-template-columns: 1.8fr 1fr 1fr;
-  gap: 14px;
-  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   transition: all 0.15s ease;
 
   &:hover {
     background: #ffffff;
     border-color: #cbd5e1;
-    box-shadow: var(--shadow-xs);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
   }
 
+  /* Card Top Section: Identity + Primary Metrics */
+  .category-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+
+    .category-card-identity {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+
+      .category-icon-badge {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border: 1px solid transparent;
+
+        .category-color-dot {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+        }
+      }
+
+      .category-title-info {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+
+        .category-name-line {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+
+          .category-name-text {
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.2;
+          }
+
+          .category-tag-pill {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: #e0e7ff;
+            color: #4338ca;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+          }
+        }
+
+        .category-meta-line {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.78rem;
+          color: #475569;
+          font-weight: 500;
+
+          .category-count-text {
+            color: #475569;
+            font-weight: 500;
+          }
+
+          .category-share-pill {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 9999px;
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+          }
+        }
+      }
+    }
+
+    .category-card-metrics {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      text-align: right;
+
+      .category-total-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .category-total-num {
+          font-size: 1.2rem;
+          font-weight: 800;
+          color: #0f172a;
+          letter-spacing: -0.02em;
+        }
+
+        .category-delta-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          padding: 3px 8px;
+          border-radius: 9999px;
+          font-size: 0.74rem;
+          font-weight: 700;
+
+          &.up {
+            background: #fef2f2;
+            color: #e11d48;
+            border: 1px solid #fecdd3;
+          }
+
+          &.down {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+          }
+
+          &.flat {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+          }
+        }
+      }
+
+      .category-secondary-metrics {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.76rem;
+        color: #64748b;
+
+        .metric-note {
+          b {
+            color: #334155;
+            font-weight: 700;
+          }
+
+          &.goal-note {
+            &.good b,
+            &.ok b {
+              color: #059669;
+            }
+            &.warning b {
+              color: #d97706;
+            }
+            &.danger b {
+              color: #dc2626;
+            }
+          }
+        }
+
+        .metric-dot-sep {
+          color: #cbd5e1;
+        }
+      }
+    }
+  }
+
+  /* Bars Section: Comparison Progress with Inline Values */
+  .category-card-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+
+    .bar-comparison-row {
+      display: grid;
+      grid-template-columns: 58px 1fr 110px;
+      align-items: center;
+      gap: 12px;
+
+      .bar-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .bar-track-shell {
+        width: 100%;
+
+        .bar-track {
+          height: 7px;
+          border-radius: 9999px;
+          background: #e2e8f0;
+          overflow: hidden;
+          position: relative;
+
+          .bar-fill {
+            display: block;
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.35s ease;
+
+            &.prev-fill {
+              background: #94a3b8;
+            }
+
+            &.goal-fill {
+              background: #10b981;
+            }
+          }
+        }
+      }
+
+      .bar-amount-value {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #475569;
+        text-align: right;
+
+        &.goal-val {
+          color: #059669;
+          font-weight: 700;
+        }
+      }
+
+      &.is-current {
+        .bar-label {
+          color: #1e293b;
+          font-weight: 800;
+        }
+
+        .bar-amount-value {
+          font-size: 0.85rem;
+          font-weight: 800;
+          color: #0f172a;
+        }
+      }
+    }
+
+    .category-goal-status-strip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 4px;
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      &.good,
+      &.ok {
+        background: #ecfdf5;
+        border: 1px solid #d1fae5;
+        color: #065f46;
+        .status-dot {
+          background: #10b981;
+        }
+      }
+
+      &.warning {
+        background: #fffbeb;
+        border: 1px solid #fef3c7;
+        color: #92400e;
+        .status-dot {
+          background: #f59e0b;
+        }
+      }
+
+      &.danger {
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+        color: #991b1b;
+        .status-dot {
+          background: #ef4444;
+        }
+      }
+
+      &.neutral {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        .status-dot {
+          background: #94a3b8;
+        }
+      }
+    }
+  }
+
+  /* Legacy fallback support */
   .summary-row-main {
     .cat-header {
       display: flex;
@@ -3246,8 +3548,29 @@
   }
 
   .category-summary-row {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    padding: 14px;
+    gap: 10px;
+
+    .category-card-top {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .category-card-metrics {
+      align-items: flex-start;
+      text-align: left;
+
+      .category-total-box {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+
+    .bar-comparison-row {
+      grid-template-columns: 50px 1fr 90px;
+      gap: 8px;
+    }
 
     .category-amounts {
       text-align: left;
