@@ -24,6 +24,9 @@ import {
   Invoice,
   MonthComparison,
   MonthlySummary,
+  NubankCsvConfirmRequest,
+  NubankCsvPreviewItem,
+  NubankCsvPreviewResponse,
   Page,
   SummaryMetric,
   Transaction,
@@ -84,6 +87,44 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     pattern: string;
     transactionIds?: string[];
   } | null>(null);
+
+  // Nubank CSV import state
+  showNubankPreviewModal = signal(false);
+  nubankPreviewResponse = signal<NubankCsvPreviewResponse | null>(null);
+  nubankPreviewItems = signal<NubankCsvPreviewItem[]>([]);
+  nubankReferencePeriod = signal('');
+  nubankBankName = signal('Nubank');
+  nubankCardName = signal('Nubank');
+  isDraggingCsv = signal(false);
+
+  nubankValidItems = computed(() => this.nubankPreviewItems().filter((item) => item.isValid));
+  nubankSelectedItems = computed(() =>
+    this.nubankPreviewItems().filter((item) => item.isValid && item.selected),
+  );
+  nubankSelectedCount = computed(() => this.nubankSelectedItems().length);
+  nubankSelectedDebits = computed(() =>
+    this.nubankSelectedItems()
+      .filter((item) => item.amount > 0)
+      .reduce((total, item) => total + item.amount, 0),
+  );
+  nubankSelectedCredits = computed(() =>
+    this.nubankSelectedItems()
+      .filter((item) => item.amount < 0)
+      .reduce((total, item) => total + item.amount, 0),
+  );
+  nubankSelectedTotal = computed(() =>
+    this.nubankSelectedItems().reduce((total, item) => total + item.amount, 0),
+  );
+  nubankDuplicateCount = computed(
+    () => this.nubankPreviewItems().filter((item) => item.isDuplicate).length,
+  );
+  nubankInvalidCount = computed(
+    () => this.nubankPreviewItems().filter((item) => !item.isValid).length,
+  );
+  allNubankItemsSelected = computed(() => {
+    const valid = this.nubankValidItems();
+    return valid.length > 0 && valid.every((item) => item.selected);
+  });
 
   newCategory = { name: '', color: '#64748b', icon: 'tag', monthlyGoal: 0 };
   ruleForm = { id: '', pattern: '', categoryId: '', matchType: 'contains' };
@@ -474,6 +515,207 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
           error?.error?.detail ?? error?.error?.Detail ?? 'Falha ao importar PDF.',
         );
         this.loading.set(false);
+      },
+    });
+  }
+
+  onCsvFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.handleCsvFile(file);
+    input.value = '';
+  }
+
+  onCsvDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer?.types.includes('Files')) {
+      this.isDraggingCsv.set(true);
+    }
+  }
+
+  onCsvDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingCsv.set(false);
+  }
+
+  onCsvDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingCsv.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        this.uploadMessage.set('Por favor, envie um arquivo .csv do Nubank.');
+        return;
+      }
+      this.handleCsvFile(file);
+    }
+  }
+
+  handleCsvFile(file: File): void {
+    this.loading.set(true);
+    this.uploadMessage.set('Lendo e analisando fatura Nubank CSV...');
+
+    this.invoiceApi.previewNubankCsv(file).subscribe({
+      next: (preview) => {
+        this.nubankPreviewResponse.set(preview);
+        this.nubankPreviewItems.set(preview.items.map((item) => ({ ...item })));
+        const periodStr = `${preview.referenceYear}-${String(preview.referenceMonth).padStart(2, '0')}`;
+        this.nubankReferencePeriod.set(periodStr);
+        this.nubankBankName.set(preview.bankName || 'Nubank');
+        this.nubankCardName.set('Nubank');
+        this.showNubankPreviewModal.set(true);
+        this.loading.set(false);
+        this.uploadMessage.set('');
+      },
+      error: (error) => {
+        this.uploadMessage.set(
+          error?.error?.detail ?? error?.error?.Detail ?? 'Falha ao analisar fatura CSV do Nubank.',
+        );
+        this.loading.set(false);
+      },
+    });
+  }
+
+  toggleAllNubankItems(selected: boolean): void {
+    this.nubankPreviewItems.update((items) =>
+      items.map((item) => (item.isValid ? { ...item, selected } : item)),
+    );
+  }
+
+  deselectNubankDuplicates(): void {
+    this.nubankPreviewItems.update((items) =>
+      items.map((item) => (item.isDuplicate ? { ...item, selected: false } : item)),
+    );
+  }
+
+  toggleNubankItemSelection(index: number): void {
+    this.nubankPreviewItems.update((items) => {
+      const copy = [...items];
+      if (copy[index] && copy[index].isValid) {
+        copy[index] = { ...copy[index], selected: !copy[index].selected };
+      }
+      return copy;
+    });
+  }
+
+  updateNubankItemCategory(index: number, categoryId: string): void {
+    this.nubankPreviewItems.update((items) => {
+      const copy = [...items];
+      if (copy[index]) {
+        const cat = this.categories().find((c) => c.id === categoryId);
+        copy[index] = {
+          ...copy[index],
+          categoryId: categoryId || null,
+          categoryName: cat?.name ?? null,
+        };
+      }
+      return copy;
+    });
+  }
+
+  updateNubankItemDescription(index: number, description: string): void {
+    this.nubankPreviewItems.update((items) => {
+      const copy = [...items];
+      if (copy[index]) {
+        copy[index] = { ...copy[index], description };
+      }
+      return copy;
+    });
+  }
+
+  updateNubankItemAmount(index: number, amountStr: string): void {
+    const amount = parseFloat(amountStr.replace(',', '.'));
+    if (!isNaN(amount)) {
+      this.nubankPreviewItems.update((items) => {
+        const copy = [...items];
+        if (copy[index]) {
+          copy[index] = {
+            ...copy[index],
+            amount,
+            type: amount < 0 ? 'credito' : 'debito',
+          };
+        }
+        return copy;
+      });
+    }
+  }
+
+  updateNubankItemDate(index: number, date: string): void {
+    this.nubankPreviewItems.update((items) => {
+      const copy = [...items];
+      if (copy[index]) {
+        copy[index] = { ...copy[index], date };
+      }
+      return copy;
+    });
+  }
+
+  cancelNubankPreview(): void {
+    this.showNubankPreviewModal.set(false);
+    this.nubankPreviewResponse.set(null);
+    this.nubankPreviewItems.set([]);
+  }
+
+  confirmNubankImport(): void {
+    const selected = this.nubankSelectedItems();
+    if (selected.length === 0) {
+      alert('Selecione pelo menos uma transação válida para importar.');
+      return;
+    }
+
+    const periodParts = this.nubankReferencePeriod().split('-');
+    const year = parseInt(periodParts[0], 10);
+    const month = parseInt(periodParts[1], 10);
+
+    const validCount = this.nubankValidItems().length;
+    const ignoredCount = validCount - selected.length;
+    const rejectedCount = this.nubankInvalidCount();
+
+    const payload: NubankCsvConfirmRequest = {
+      originalFileName: this.nubankPreviewResponse()?.fileName ?? 'nubank.csv',
+      bankName: this.nubankBankName() || 'Nubank',
+      cardName: this.nubankCardName() || 'Nubank',
+      referenceMonth: month,
+      referenceYear: year,
+      ignoredCount,
+      rejectedCount,
+      transactions: selected.map((item) => ({
+        date: item.date,
+        description: item.description,
+        normalizedDescription: item.normalizedDescription,
+        amount: item.amount,
+        type: item.amount < 0 ? 'credito' : 'debito',
+        categoryId: item.categoryId,
+      })),
+    };
+
+    this.loading.set(true);
+    this.invoiceApi.confirmNubankCsv(payload).subscribe({
+      next: (result) => {
+        this.showNubankPreviewModal.set(false);
+        this.nubankPreviewResponse.set(null);
+        this.nubankPreviewItems.set([]);
+        this.loading.set(false);
+
+        this.uploadMessage.set(
+          `Fatura Nubank importada com sucesso: ${result.importedCount} lançamentos importados (${result.ignoredCount} ignorados, ${result.rejectedCount} rejeitados).`,
+        );
+        this.selectedInvoiceId.set(result.id);
+        this.navigatePage('invoices');
+        this.refreshAll();
+        this.loadTransactions(result.id);
+      },
+      error: (error) => {
+        this.loading.set(false);
+        alert(
+          error?.error?.detail ??
+            error?.error?.Detail ??
+            'Falha ao confirmar importação da fatura Nubank.',
+        );
       },
     });
   }

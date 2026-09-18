@@ -75,6 +75,7 @@ builder.Services.AddHttpClient<ExtractorClient>(client =>
     client.BaseAddress = new Uri(builder.Configuration["Extractor:BaseUrl"] ?? "http://localhost:8000");
 });
 builder.Services.AddScoped<CategorizationService>();
+builder.Services.AddSingleton<NubankCsvParser>();
 
 var app = builder.Build();
 
@@ -237,6 +238,223 @@ app.MapPost("/api/invoices/upload", async (
         return Results.Problem($"Falha ao extrair fatura: {ex.Message}");
     }
 }).DisableAntiforgery().RequireAuthorization();
+
+app.MapPost("/api/invoices/nubank-csv/preview", async (
+    IFormFile file,
+    AppDbContext db,
+    NubankCsvParser parser,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+
+    if (file.Length == 0 || !file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.BadRequest(new { Detail = "Envie uma fatura em formato CSV." });
+    }
+
+    try
+    {
+        await using var stream = file.OpenReadStream();
+        var parseResult = parser.Parse(stream);
+
+        var existingTransactions = await db.Transactions
+            .Where(t => t.UserId == userId)
+            .Select(t => new { t.Date, t.NormalizedDescription, t.Amount })
+            .ToListAsync(cancellationToken);
+
+        var existingSet = new HashSet<string>(
+            existingTransactions.Select(t => $"{t.Date}|{t.NormalizedDescription}|{t.Amount:0.00}"),
+            StringComparer.OrdinalIgnoreCase);
+
+        var categories = await db.Categories
+            .Where(c => c.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var rules = await db.CategorizationRules
+            .Where(r => r.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var fallbackCategory = categories.FirstOrDefault(c => c.Name == "Outros");
+        var creditCategory = categories.FirstOrDefault(c => c.Name == "Credito / Estorno");
+
+        var duplicateCount = parseResult.DuplicateCount;
+        var items = new List<NubankCsvPreviewItemDto>();
+
+        foreach (var row in parseResult.Rows)
+        {
+            if (row.IsValid && !row.IsDuplicate)
+            {
+                var dedupeKey = $"{row.Date}|{row.NormalizedDescription}|{row.Amount:0.00}";
+                if (existingSet.Contains(dedupeKey))
+                {
+                    row.IsDuplicate = true;
+                    row.DuplicateReason = "Já cadastrada no sistema";
+                    duplicateCount++;
+                }
+            }
+
+            Category? assignedCategory = null;
+            if (!string.IsNullOrWhiteSpace(row.Category))
+            {
+                assignedCategory = categories.FirstOrDefault(c =>
+                    string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (assignedCategory is null)
+            {
+                if (row.Amount < 0 && creditCategory is not null)
+                {
+                    assignedCategory = creditCategory;
+                }
+                else
+                {
+                    var matchedRule = rules.FirstOrDefault(r =>
+                        r.MatchType == "contains" &&
+                        row.NormalizedDescription.Contains(r.NormalizedPattern, StringComparison.OrdinalIgnoreCase));
+
+                    assignedCategory = matchedRule is not null
+                        ? categories.FirstOrDefault(c => c.Id == matchedRule.CategoryId)
+                        : fallbackCategory;
+                }
+            }
+
+            var isPayment = row.Amount < 0 && (
+                row.NormalizedDescription.Contains("PAGAMENTO RECEBIDO", StringComparison.OrdinalIgnoreCase) ||
+                row.NormalizedDescription.Contains("PAGAMENTO DE FATURA", StringComparison.OrdinalIgnoreCase) ||
+                row.NormalizedDescription.Contains("PAGAMENTO EFETUADO", StringComparison.OrdinalIgnoreCase));
+
+            if (isPayment && string.IsNullOrEmpty(row.DuplicateReason))
+            {
+                row.IsDuplicate = true;
+                row.DuplicateReason = "Pagamento de fatura anterior (desmarcado para não distorcer gastos e fatura atual)";
+            }
+
+            var isDbDuplicate = row.IsDuplicate && (row.DuplicateReason?.Contains("Já cadastrada") ?? false);
+            var shouldSelect = row.IsValid && !isDbDuplicate && !isPayment;
+
+            items.Add(new NubankCsvPreviewItemDto(
+                row.LineNumber,
+                row.Date,
+                row.Description,
+                row.NormalizedDescription,
+                row.Amount,
+                row.Type,
+                assignedCategory?.Id,
+                assignedCategory?.Name,
+                row.IsValid,
+                row.ErrorMessage,
+                row.IsDuplicate,
+                row.DuplicateReason,
+                shouldSelect
+            ));
+        }
+
+        var response = new NubankCsvPreviewResponse(
+            file.FileName,
+            parseResult.TotalLines,
+            parseResult.ValidCount,
+            parseResult.InvalidCount,
+            duplicateCount,
+            parseResult.TotalAmount,
+            parseResult.ReferenceMonth,
+            parseResult.ReferenceYear,
+            "Nubank",
+            items
+        );
+
+        return Results.Ok(response);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { Detail = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Falha ao analisar fatura CSV: {ex.Message}");
+    }
+}).DisableAntiforgery().RequireAuthorization();
+
+app.MapPost("/api/invoices/nubank-csv/confirm", async (
+    NubankCsvConfirmRequest request,
+    AppDbContext db,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+
+    if (request.Transactions == null || request.Transactions.Count == 0)
+    {
+        return Results.BadRequest(new { Detail = "Nenhuma transação selecionada para importação." });
+    }
+
+    if (request.ReferenceMonth < 1 || request.ReferenceMonth > 12 || request.ReferenceYear < 2000)
+    {
+        return Results.BadRequest(new { Detail = "Mês ou ano de referência inválido." });
+    }
+
+    var bankName = string.IsNullOrWhiteSpace(request.BankName) ? "Nubank" : request.BankName.Trim();
+
+    var duplicateExists = await db.Invoices.AnyAsync(invoice =>
+        invoice.UserId == userId &&
+        invoice.BankName == bankName &&
+        invoice.ReferenceMonth == request.ReferenceMonth &&
+        invoice.ReferenceYear == request.ReferenceYear,
+        cancellationToken);
+
+    if (duplicateExists)
+    {
+        return Results.Conflict(new
+        {
+            Detail = $"Já existe uma fatura do {bankName} importada para {request.ReferenceMonth:00}/{request.ReferenceYear}."
+        });
+    }
+
+    var invoice = new Invoice.Api.Models.Invoice
+    {
+        UserId = userId,
+        OriginalFileName = string.IsNullOrWhiteSpace(request.OriginalFileName) ? "nubank.csv" : request.OriginalFileName,
+        FilePath = "",
+        Status = InvoiceStatus.Completed,
+        ReferenceMonth = request.ReferenceMonth,
+        ReferenceYear = request.ReferenceYear,
+        BankName = bankName,
+        CardName = string.IsNullOrWhiteSpace(request.CardName) ? "Nubank" : request.CardName.Trim()
+    };
+
+    db.Invoices.Add(invoice);
+
+    var transactions = request.Transactions.Select(item =>
+    {
+        var normalized = string.IsNullOrWhiteSpace(item.NormalizedDescription)
+            ? TextNormalizer.NormalizeDescription(item.Description)
+            : item.NormalizedDescription;
+
+        return new Transaction
+        {
+            InvoiceId = invoice.Id,
+            UserId = userId,
+            Date = item.Date,
+            Description = item.Description,
+            NormalizedDescription = normalized,
+            RawCategory = "",
+            Amount = item.Amount,
+            Type = item.Amount < 0 ? "credito" : "debito",
+            CategoryId = item.CategoryId
+        };
+    }).ToList();
+
+    db.Transactions.AddRange(transactions);
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Created($"/api/invoices/{invoice.Id}", new NubankCsvConfirmResponse(
+        invoice.Id,
+        invoice.Status,
+        transactions.Count,
+        request.IgnoredCount,
+        request.RejectedCount
+    ));
+}).RequireAuthorization();
 
 app.MapGet("/api/invoices", async (AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
 {
@@ -778,3 +996,60 @@ public record BulkCategorizeRequest(Guid[] TransactionIds, Guid CategoryId);
 public record CategoryRequest(string Name, string Color, string Icon, decimal MonthlyGoal);
 public record CategorySummaryResponse(Guid? CategoryId, string CategoryName, decimal Total, int Count, decimal MonthlyGoal);
 public record CreateRuleRequest(string MatchType, string Pattern, Guid CategoryId);
+
+public record NubankCsvPreviewItemDto(
+    int LineNumber,
+    string Date,
+    string Description,
+    string NormalizedDescription,
+    decimal Amount,
+    string Type,
+    Guid? CategoryId,
+    string? CategoryName,
+    bool IsValid,
+    string? ErrorMessage,
+    bool IsDuplicate,
+    string? DuplicateReason,
+    bool Selected
+);
+
+public record NubankCsvPreviewResponse(
+    string FileName,
+    int TotalLines,
+    int ValidCount,
+    int InvalidCount,
+    int DuplicateCount,
+    decimal TotalAmount,
+    int ReferenceMonth,
+    int ReferenceYear,
+    string BankName,
+    List<NubankCsvPreviewItemDto> Items
+);
+
+public record NubankCsvConfirmItemDto(
+    string Date,
+    string Description,
+    string? NormalizedDescription,
+    decimal Amount,
+    string Type,
+    Guid? CategoryId
+);
+
+public record NubankCsvConfirmRequest(
+    string OriginalFileName,
+    string BankName,
+    string? CardName,
+    int ReferenceMonth,
+    int ReferenceYear,
+    int IgnoredCount,
+    int RejectedCount,
+    List<NubankCsvConfirmItemDto> Transactions
+);
+
+public record NubankCsvConfirmResponse(
+    Guid Id,
+    string Status,
+    int ImportedCount,
+    int IgnoredCount,
+    int RejectedCount
+);

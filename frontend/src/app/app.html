@@ -148,7 +148,22 @@
         </div>
       </aside>
 
-      <section class="admin-main">
+      <section
+        class="admin-main"
+        (dragover)="onCsvDragOver($event)"
+        (dragleave)="onCsvDragLeave($event)"
+        (drop)="onCsvDrop($event)"
+      >
+        @if (isDraggingCsv()) {
+          <div class="drag-overlay">
+            <div class="drag-box">
+              <span class="drag-icon" aria-hidden="true">📄</span>
+              <strong>Solte a fatura Nubank (.csv) aqui</strong>
+              <small>Os dados serão pré-visualizados antes da confirmação</small>
+            </div>
+          </div>
+        }
+
         <header class="admin-header">
           <div class="page-heading">
             <h1>{{ pageTitle() }}</h1>
@@ -177,6 +192,16 @@
                 type="file"
                 accept="application/pdf"
                 (change)="onFileSelected($event)"
+                [disabled]="loading()"
+              />
+            </label>
+            <label class="upload-button csv-button" [class.disabled]="loading()" title="Importar fatura Nubank CSV">
+              <span class="button-icon" aria-hidden="true">+</span>
+              <span>Nubank CSV</span>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                (change)="onCsvFileSelected($event)"
                 [disabled]="loading()"
               />
             </label>
@@ -896,6 +921,230 @@
             <button type="button" (click)="closeCategorizationRuleModal()">Não agora</button>
             <button type="button" class="primary-action" (click)="saveCategorizationRule()">
               Criar regra
+            </button>
+          </footer>
+        </section>
+      </div>
+    }
+
+    @if (showNubankPreviewModal()) {
+      <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="nubank-preview-title">
+        <section class="nubank-preview-modal">
+          <header class="modal-top">
+            <div>
+              <p class="eyebrow">Importação de Fatura</p>
+              <h2 id="nubank-preview-title">Prévia da Fatura Nubank CSV</h2>
+              <p class="modal-subtitle">
+                Arquivo: <strong>{{ nubankPreviewResponse()?.fileName }}</strong>
+              </p>
+            </div>
+            <button
+              type="button"
+              class="icon-button"
+              (click)="cancelNubankPreview()"
+              title="Fechar prévia"
+            >
+              x
+            </button>
+          </header>
+
+          <div class="preview-config-grid">
+            <label class="modal-field">
+              <span>Mês e Ano de Referência</span>
+              <select
+                [ngModel]="nubankReferencePeriod()"
+                (ngModelChange)="nubankReferencePeriod.set($event)"
+              >
+                @for (period of periodOptions(); track period) {
+                  <option [value]="period">{{ formatPeriodLabel(period) }}</option>
+                }
+              </select>
+            </label>
+            <label class="modal-field">
+              <span>Instituição / Banco</span>
+              <input
+                type="text"
+                [ngModel]="nubankBankName()"
+                (ngModelChange)="nubankBankName.set($event)"
+              />
+            </label>
+            <label class="modal-field">
+              <span>Identificação do Cartão</span>
+              <input
+                type="text"
+                [ngModel]="nubankCardName()"
+                (ngModelChange)="nubankCardName.set($event)"
+              />
+            </label>
+          </div>
+
+          <div class="preview-metrics-strip">
+            <div class="metric-pill">
+              <span>Total de linhas</span>
+              <strong>{{ nubankPreviewResponse()?.totalLines ?? 0 }}</strong>
+            </div>
+            <div class="metric-pill pill-success">
+              <span>Válidas</span>
+              <strong>{{ nubankValidItems().length }}</strong>
+            </div>
+            @if (nubankInvalidCount() > 0) {
+              <div class="metric-pill pill-danger highlight">
+                <span>Inválidas</span>
+                <strong>{{ nubankInvalidCount() }}</strong>
+              </div>
+            }
+            @if (nubankDuplicateCount() > 0) {
+              <div class="metric-pill pill-warning highlight">
+                <span>Alertas</span>
+                <strong>{{ nubankDuplicateCount() }}</strong>
+              </div>
+            }
+            <div class="metric-pill">
+              <span>Compras</span>
+              <strong>{{ formatCurrency(nubankSelectedDebits()) }}</strong>
+            </div>
+            @if (nubankSelectedCredits() < 0) {
+              <div class="metric-pill pill-success">
+                <span>Estornos</span>
+                <strong>{{ formatCurrency(nubankSelectedCredits()) }}</strong>
+              </div>
+            }
+            <div class="metric-pill pill-highlight">
+              <span>Fatura (Líquido)</span>
+              <strong>{{ formatCurrency(nubankSelectedTotal()) }}</strong>
+            </div>
+          </div>
+
+          <div class="preview-actions-bar">
+            <div class="left-actions">
+              <label class="toggle-all-label">
+                <input
+                  type="checkbox"
+                  [checked]="allNubankItemsSelected()"
+                  (change)="toggleAllNubankItems($any($event.target).checked)"
+                />
+                <span>Selecionar todas válidas</span>
+              </label>
+              @if (nubankDuplicateCount() > 0) {
+                <button
+                  type="button"
+                  class="secondary-button small"
+                  (click)="deselectNubankDuplicates()"
+                >
+                  Desmarcar duplicatas
+                </button>
+              }
+            </div>
+            <div class="right-stats">
+              <span>
+                <strong>{{ nubankSelectedCount() }}</strong> de {{ nubankValidItems().length }} selecionadas
+              </span>
+            </div>
+          </div>
+
+          <div class="preview-table-container">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th class="col-select"></th>
+                  <th class="col-date">Data</th>
+                  <th class="col-desc">Descrição</th>
+                  <th class="col-amount">Valor</th>
+                  <th class="col-type">Tipo</th>
+                  <th class="col-cat">Categoria</th>
+                  <th class="col-status">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of nubankPreviewItems(); track $index) {
+                  <tr
+                    [class.row-invalid]="!item.isValid"
+                    [class.row-duplicate]="item.isDuplicate"
+                    [class.row-selected]="item.selected"
+                  >
+                    <td class="col-select">
+                      <input
+                        type="checkbox"
+                        [checked]="item.selected"
+                        [disabled]="!item.isValid"
+                        (change)="toggleNubankItemSelection($index)"
+                      />
+                    </td>
+                    <td class="col-date">
+                      <input
+                        type="text"
+                        class="cell-input"
+                        [value]="item.date"
+                        (change)="updateNubankItemDate($index, $any($event.target).value)"
+                        [disabled]="!item.isValid"
+                      />
+                    </td>
+                    <td class="col-desc">
+                      <input
+                        type="text"
+                        class="cell-input"
+                        [value]="item.description"
+                        (change)="updateNubankItemDescription($index, $any($event.target).value)"
+                        [disabled]="!item.isValid"
+                      />
+                    </td>
+                    <td class="col-amount" [class.credit-val]="item.amount < 0">
+                      <input
+                        type="text"
+                        class="cell-input amount-cell"
+                        [value]="item.amount"
+                        (change)="updateNubankItemAmount($index, $any($event.target).value)"
+                        [disabled]="!item.isValid"
+                      />
+                    </td>
+                    <td class="col-type">
+                      <span class="type-tag" [class.tag-credit]="item.type === 'credito'">
+                        {{ item.type === 'credito' ? 'Crédito' : 'Débito' }}
+                      </span>
+                    </td>
+                    <td class="col-cat">
+                      <select
+                        class="cell-select"
+                        [value]="item.categoryId ?? ''"
+                        (change)="updateNubankItemCategory($index, $any($event.target).value)"
+                        [disabled]="!item.isValid"
+                      >
+                        <option value="">Sem categoria</option>
+                        @for (cat of categories(); track cat.id) {
+                          <option [value]="cat.id">{{ cat.name }}</option>
+                        }
+                      </select>
+                    </td>
+                    <td class="col-status">
+                      @if (!item.isValid) {
+                        <span class="status-badge status-error" [title]="item.errorMessage ?? 'Inválida'">
+                          Inválida: {{ item.errorMessage }}
+                        </span>
+                      } @else if (item.isDuplicate) {
+                        <span class="status-badge status-warn" [title]="item.duplicateReason ?? 'Possível duplicata'">
+                          ⚠️ {{ item.duplicateReason }}
+                        </span>
+                      } @else {
+                        <span class="status-badge status-ok">✓ Válida</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <footer class="modal-footer">
+            <button type="button" class="ghost-button" (click)="cancelNubankPreview()">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="primary-action"
+              [disabled]="nubankSelectedCount() === 0 || loading()"
+              (click)="confirmNubankImport()"
+            >
+              Confirmar Importação ({{ nubankSelectedCount() }} transações)
             </button>
           </footer>
         </section>

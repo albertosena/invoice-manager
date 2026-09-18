@@ -107,3 +107,61 @@ export type UploadInvoiceResponse = {
   status: string;
   transactions: number;
 };
+
+export type NubankCsvPreviewItem = {
+  lineNumber: number;
+  date: string;
+  description: string;
+  normalizedDescription: string;
+  amount: number;
+  type: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  isValid: boolean;
+  errorMessage: string | null;
+  isDuplicate: boolean;
+  duplicateReason: string | null;
+  selected: boolean;
+};
+
+export type NubankCsvPreviewResponse = {
+  fileName: string;
+  totalLines: number;
+  validCount: number;
+  invalidCount: number;
+  duplicateCount: number;
+  totalAmount: number;
+  referenceMonth: number;
+  referenceYear: number;
+  bankName: string;
+  items: NubankCsvPreviewItem[];
+};
+
+export type NubankCsvConfirmItem = {
+  date: string;
+  description: string;
+  normalizedDescription?: string;
+  amount: number;
+  type: string;
+  categoryId: string | null;
+};
+
+export type NubankCsvConfirmRequest = {
+  originalFileName: string;
+  bankName: string;
+  cardName?: string;
+  referenceMonth: number;
+  referenceYear: number;
+  ignoredCount: number;
+  rejectedCount: number;
+  transactions: NubankCsvConfirmItem[];
+};
+
+export type NubankCsvConfirmResponse = {
+  id: string;
+  status: string;
+  importedCount: number;
+  ignoredCount: number;
+  rejectedCount: number;
+};
+
