@@ -21,6 +21,10 @@ import {
   CategoryComparison,
   CategoryInsight,
   CategorySummary,
+  GoalHistoryMonth,
+  GoalStatus,
+  GoalSummary,
+  GoalsResponse,
   Invoice,
   MonthComparison,
   MonthlySummary,
@@ -33,10 +37,23 @@ import {
   TransactionQuickFilter,
   User,
 } from './models/invoice.models';
+import { UtilizationBarComponent } from './components/utilization-bar/utilization-bar.component';
+import { GoalStatusBadgeComponent } from './components/goal-status-badge/goal-status-badge.component';
+import {
+  GoalModalComponent,
+  GoalModalMode,
+  GoalModalSaveEvent,
+} from './components/goal-modal/goal-modal.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    UtilizationBarComponent,
+    GoalStatusBadgeComponent,
+    GoalModalComponent,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -50,6 +67,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   private readonly pagePaths: Record<Page, string> = {
     dashboard: '/dashboard',
     invoices: '/invoices',
+    goals: '/goals',
     categories: '/categories',
   };
 
@@ -87,6 +105,8 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     pattern: string;
     transactionIds?: string[];
   } | null>(null);
+  refreshingInvoices = signal(false);
+  isDarkMode = signal<boolean>(this.readStoredTheme());
 
   // Nubank CSV import state
   showNubankPreviewModal = signal(false);
@@ -145,6 +165,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     const titles: Record<Page, string> = {
       dashboard: 'Dashboard',
       invoices: 'Faturas',
+      goals: 'Metas Mensais',
       categories: 'Categorias',
     };
     return titles[this.activePage()];
@@ -152,8 +173,9 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
 
   pageSubtitle = computed(() => {
     const subtitles: Record<Page, string> = {
-      dashboard: 'Visão geral das suas faturas, gastos e categorias.',
+      dashboard: 'Visão geral das suas faturas, gastos e metas.',
       invoices: 'Importe PDFs, selecione faturas e categorize lançamentos.',
+      goals: 'Acompanhe suas metas de gastos gerais e por categoria.',
       categories: 'Organize categorias, regras e classificações automáticas.',
     };
     return subtitles[this.activePage()];
@@ -162,6 +184,51 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   dashboardPeriodLabel = computed(() => this.formatPeriodLabel(this.dashboardPeriod()));
   previousDashboardPeriodLabel = computed(() =>
     this.formatPeriodLabel(this.previousDashboardPeriodValue()),
+  );
+
+  // Goals page state
+  goalsData = signal<GoalsResponse | null>(null);
+  goalsPeriod = signal(this.currentPeriodValue());
+  goalsPeriodLabel = computed(() => this.formatPeriodLabel(this.goalsPeriod()));
+  isGoalModalOpen = signal(false);
+  goalModalMode = signal<GoalModalMode>('overall');
+  goalModalInitialData = signal<{
+    id?: string;
+    categoryId?: string | null;
+    categoryName?: string;
+    amount: number;
+    repeatNextMonths?: number;
+  } | null>(null);
+  goalsExistingCategoryIds = computed(() =>
+    (this.goalsData()?.categoryGoals ?? []).map((cg) => cg.categoryId),
+  );
+
+  // Dashboard 3 Cards computeds
+  dashboardNetSpent = computed(() => this.monthlySummary()?.netAmount ?? 0);
+  dashboardDebits = computed(() => this.monthlySummary()?.totalSpent ?? 0);
+  dashboardCredits = computed(() => this.monthlySummary()?.totalCredits ?? 0);
+  dashboardGoal = computed(() => this.monthlySummary()?.monthlyGoal ?? 0);
+  dashboardGoalPercentage = computed(() => {
+    const goal = this.dashboardGoal();
+    if (goal <= 0) return 0;
+    return Math.round((this.dashboardNetSpent() / goal) * 1000) / 10;
+  });
+  dashboardGoalAvailable = computed(() => {
+    const goal = this.dashboardGoal();
+    return goal - this.dashboardNetSpent();
+  });
+  dashboardGoalStatus = computed<GoalStatus>(() => {
+    const goal = this.dashboardGoal();
+    if (goal <= 0) return 'no_goal';
+    const pct = this.dashboardGoalPercentage();
+    if (pct >= 100) return 'danger';
+    if (pct >= 80) return 'warning';
+    return 'normal';
+  });
+  dashboardCategorizedCount = computed(() => this.monthlySummary()?.categorizedCount ?? 0);
+  dashboardUncategorizedCount = computed(() => this.monthlySummary()?.uncategorizedCount ?? 0);
+  dashboardCategorizedPercentage = computed(
+    () => this.monthlySummary()?.categorizedPercentage ?? 0,
   );
 
   selectedInvoice = computed(
@@ -396,6 +463,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.applyTheme(this.isDarkMode());
     this.syncPageFromUrl();
     window.addEventListener('popstate', () => this.syncPageFromUrl());
 
@@ -425,6 +493,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     this.loadCategories();
     this.loadCategorizationRules();
     this.loadDashboard();
+    this.loadGoals();
   }
 
   private observeInvoiceSidebarHeight(): void {
@@ -485,6 +554,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     this.categorySummary.set([]);
     this.monthlySummary.set(null);
     this.monthComparison.set(null);
+    this.goalsData.set(null);
     this.selectedInvoiceId.set(null);
     localStorage.removeItem('invoice-manager-token');
     localStorage.removeItem('invoice-manager-user');
@@ -721,12 +791,71 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   loadInvoices(): void {
-    this.invoiceApi.getInvoices().subscribe((invoices) => {
-      this.invoices.set(invoices);
-      if (this.activePage() === 'dashboard' && !this.categorySummary().length) {
-        this.loadCategorySummaryFallback(this.dashboardPeriod(), true);
-      }
+    this.refreshingInvoices.set(true);
+    this.invoiceApi.getInvoices().subscribe({
+      next: (invoices) => {
+        this.invoices.set(invoices);
+        if (this.activePage() === 'dashboard' && !this.categorySummary().length) {
+          this.loadCategorySummaryFallback(this.dashboardPeriod(), true);
+        }
+        setTimeout(() => this.refreshingInvoices.set(false), 400);
+      },
+      error: () => {
+        this.refreshingInvoices.set(false);
+      },
     });
+  }
+
+  isNubankInvoice(invoice: Invoice): boolean {
+    const name = (invoice.originalFileName || '').toLowerCase();
+    const bank = (invoice.bankName || '').toLowerCase();
+    return name.includes('nubank') || bank.includes('nubank');
+  }
+
+  getCategoryColor(categoryId?: string | null, categoryName?: string): string {
+    if (categoryId) {
+      const cat = this.categories().find((c) => c.id === categoryId);
+      if (cat?.color) return cat.color;
+    }
+    if (categoryName) {
+      const cat = this.categories().find(
+        (c) => c.name.toLowerCase() === categoryName.toLowerCase(),
+      );
+      if (cat?.color) return cat.color;
+      const lower = categoryName.toLowerCase();
+      if (lower.includes('crédito') || lower.includes('credito') || lower.includes('estorno')) {
+        return '#10b981';
+      }
+      if (lower.includes('farmácia') || lower.includes('farmacia') || lower.includes('saúde') || lower.includes('saude')) {
+        return '#06b6d4';
+      }
+      if (lower.includes('alimentação') || lower.includes('alimentacao') || lower.includes('restaurante') || lower.includes('ifood')) {
+        return '#f97316';
+      }
+      if (lower.includes('transporte') || lower.includes('uber') || lower.includes('posto')) {
+        return '#3b82f6';
+      }
+      if (lower.includes('outros') || lower.includes('sem categoria')) {
+        return '#64748b';
+      }
+    }
+    return '#6366f1';
+  }
+
+  getCategoryInvoicePercentage(amount: number): string {
+    const total = this.selectedInvoiceSummary().totalSpent;
+    if (!total || total <= 0) return '0';
+    const pct = (Math.abs(amount) / total) * 100;
+    return pct >= 10 ? pct.toFixed(0) : pct.toFixed(1);
+  }
+
+  isCreditCategory(item: CategorySummary): boolean {
+    return (
+      item.total < 0 ||
+      (item.categoryName?.toLowerCase().includes('crédito') ?? false) ||
+      (item.categoryName?.toLowerCase().includes('credito') ?? false) ||
+      (item.categoryName?.toLowerCase().includes('estorno') ?? false)
+    );
   }
 
   loadTransactions(invoiceId: string): void {
@@ -757,6 +886,9 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     const path = this.pagePaths[page];
     if (window.location.pathname !== path) {
       history.pushState(null, '', path);
+    }
+    if (page === 'goals') {
+      this.loadGoals();
     }
   }
 
@@ -799,6 +931,137 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     this.invoiceApi
       .getMonthComparison(params)
       .subscribe((comparison) => this.monthComparison.set(comparison));
+  }
+
+  loadGoals(period = this.goalsPeriod()): void {
+    const [year, month] = period.split('-').map(Number);
+    this.invoiceApi.getGoals(year, month).subscribe({
+      next: (data) => this.goalsData.set(data),
+      error: () => this.goalsData.set(null),
+    });
+  }
+
+  changeGoalsPeriod(value: string): void {
+    this.goalsPeriod.set(value);
+    this.loadGoals(value);
+  }
+
+  openCreateOverallGoal(): void {
+    this.goalModalMode.set('overall');
+    const existing = this.goalsData()?.overallGoal;
+    this.goalModalInitialData.set(
+      existing ? { id: existing.id, amount: existing.amount } : null,
+    );
+    this.isGoalModalOpen.set(true);
+  }
+
+  openCreateOverallGoalFromDashboard(): void {
+    this.goalsPeriod.set(this.dashboardPeriod());
+    this.goalModalMode.set('overall');
+    const goalAmount = this.monthlySummary()?.monthlyGoal ?? 0;
+    this.goalModalInitialData.set(
+      goalAmount > 0 ? { amount: goalAmount } : null,
+    );
+    this.isGoalModalOpen.set(true);
+  }
+
+  openCreateCategoryGoal(): void {
+    this.goalModalMode.set('category');
+    this.goalModalInitialData.set(null);
+    this.isGoalModalOpen.set(true);
+  }
+
+  openEditGoal(item: {
+    id: string;
+    categoryId?: string | null;
+    categoryName?: string;
+    amount: number;
+  }): void {
+    this.goalModalMode.set('edit');
+    this.goalModalInitialData.set({
+      id: item.id,
+      categoryId: item.categoryId ?? null,
+      categoryName: item.categoryName,
+      amount: item.amount,
+    });
+    this.isGoalModalOpen.set(true);
+  }
+
+  deleteGoal(id: string): void {
+    const confirmed = window.confirm('Deseja realmente excluir esta meta?');
+    if (!confirmed) return;
+
+    this.invoiceApi.deleteGoal(id).subscribe({
+      next: () => {
+        this.loadGoals();
+        this.loadDashboard();
+      },
+      error: () => alert('Falha ao excluir meta.'),
+    });
+  }
+
+  copyPreviousMonthGoals(): void {
+    const [year, month] = this.goalsPeriod().split('-').map(Number);
+    const confirmed = window.confirm(
+      'Deseja copiar as metas definidas no mês anterior para este mês?',
+    );
+    if (!confirmed) return;
+
+    this.invoiceApi.copyPreviousMonthGoals(year, month).subscribe({
+      next: (res) => {
+        this.loadGoals();
+        this.loadDashboard();
+        alert(`Metas copiadas com sucesso! (${res.copied} meta(s) copiada(s))`);
+      },
+      error: (err) => {
+        alert(
+          err?.error?.detail ??
+            err?.error?.Detail ??
+            'Nenhuma meta encontrada no mês anterior para copiar.',
+        );
+      },
+    });
+  }
+
+  handleGoalModalSave(event: GoalModalSaveEvent): void {
+    if (event.id) {
+      this.invoiceApi.updateGoal(event.id, event.amount).subscribe({
+        next: () => {
+          this.isGoalModalOpen.set(false);
+          this.loadGoals();
+          this.loadDashboard();
+        },
+        error: (err) => alert(err?.error?.detail ?? 'Erro ao atualizar meta.'),
+      });
+    } else {
+      const [year, month] = this.goalsPeriod().split('-').map(Number);
+      this.invoiceApi
+        .saveGoal({
+          year,
+          month,
+          categoryId: event.categoryId || null,
+          amount: event.amount,
+          repeatNextMonths: event.repeatNextMonths,
+        })
+        .subscribe({
+          next: () => {
+            this.isGoalModalOpen.set(false);
+            this.loadGoals();
+            this.loadDashboard();
+          },
+          error: (err) => alert(err?.error?.detail ?? 'Erro ao salvar meta.'),
+        });
+    }
+  }
+
+  closeGoalModal(): void {
+    this.isGoalModalOpen.set(false);
+    this.goalModalInitialData.set(null);
+  }
+
+  goToCategorization(): void {
+    this.navigatePage('invoices');
+    this.transactionQuickFilter.set('outros');
   }
 
   changeDashboardPeriod(value: string): void {
@@ -1133,6 +1396,9 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
       window.location.pathname.endsWith(path),
     )?.[0] ?? 'dashboard') as Page;
     this.activePage.set(page);
+    if (page === 'goals') {
+      this.loadGoals();
+    }
   }
 
   private readStoredUser(): User | null {
@@ -1144,6 +1410,41 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     } catch {
       return null;
     }
+  }
+
+  toggleTheme(): void {
+    const next = !this.isDarkMode();
+    this.isDarkMode.set(next);
+    this.applyTheme(next);
+    try {
+      localStorage.setItem('invoice_theme', next ? 'dark' : 'light');
+    } catch {
+      // ignore
+    }
+  }
+
+  applyTheme(dark: boolean): void {
+    if (typeof document !== 'undefined') {
+      if (dark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    }
+  }
+
+  private readStoredTheme(): boolean {
+    try {
+      const saved = localStorage.getItem('invoice_theme');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+    } catch {
+      // ignore
+    }
+    return false;
   }
 
   private suggestPattern(value: string): string {
@@ -1254,13 +1555,39 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   categoryProgress(value: number): number {
+    if (!value || value <= 0) return 0;
     const max = this.selectedInvoiceCategoryProgress();
-    return max ? Math.max(4, Math.round((Math.abs(value) / max) * 100)) : 0;
+    return max ? Math.max(3, Math.min(100, Math.round((Math.abs(value) / max) * 100))) : 0;
   }
 
   dashboardCategoryProgress(value: number): number {
+    if (!value || value <= 0) return 0;
     const max = this.dashboardCategoryProgressMax();
-    return max ? Math.max(4, Math.round((Math.abs(value) / max) * 100)) : 0;
+    return max ? Math.max(3, Math.min(100, Math.round((Math.abs(value) / max) * 100))) : 0;
+  }
+
+  categoryGoalPercent(item: CategoryComparison): number {
+    if (!item.monthlyGoal || item.monthlyGoal <= 0) return 0;
+    return Math.round((item.total / item.monthlyGoal) * 100);
+  }
+
+  categoryGoalStatusText(item: CategoryComparison): string {
+    if (!item.monthlyGoal || item.monthlyGoal <= 0) return '';
+    const pct = this.categoryGoalPercent(item);
+    const diff = item.monthlyGoal - item.total;
+    if (diff >= 0) {
+      return `${pct}% da meta utilizada • ${this.formatCurrency(diff)} disponíveis`;
+    } else {
+      return `${pct}% da meta • Limite ultrapassado em ${this.formatCurrency(Math.abs(diff))}`;
+    }
+  }
+
+  categoryGoalStatusClass(item: CategoryComparison): 'good' | 'warning' | 'danger' {
+    if (!item.monthlyGoal || item.monthlyGoal <= 0) return 'good';
+    const pct = (item.total / item.monthlyGoal) * 100;
+    if (pct >= 100) return 'danger';
+    if (pct >= 80) return 'warning';
+    return 'good';
   }
 
   categoryDeltaLabel(item: CategoryComparison): string {

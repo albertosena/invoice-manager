@@ -75,3 +75,17 @@ public sealed class CategorizationRule
     public Category Category { get; set; } = null!;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class MonthlyGoal
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string UserId { get; set; } = "";
+    public User? User { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public Guid? CategoryId { get; set; }
+    public Category? Category { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+}

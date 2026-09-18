@@ -13,11 +13,41 @@ import {
   NubankCsvPreviewResponse,
   Transaction,
   UploadInvoiceResponse,
+  GoalsResponse,
 } from '../models/invoice.models';
 
 @Injectable({ providedIn: 'root' })
 export class InvoiceApiService {
   constructor(private http: HttpClient) {}
+
+  getGoals(year: number, month: number) {
+    return this.http.get<GoalsResponse>(`${API_BASE}/goals?year=${year}&month=${month}`);
+  }
+
+  saveGoal(payload: {
+    year: number;
+    month: number;
+    categoryId?: string | null;
+    amount: number;
+    repeatNextMonths?: number;
+  }) {
+    return this.http.post<{ success: boolean; count: number }>(`${API_BASE}/goals`, payload);
+  }
+
+  updateGoal(id: string, amount: number) {
+    return this.http.put(`${API_BASE}/goals/${id}`, { amount });
+  }
+
+  deleteGoal(id: string) {
+    return this.http.delete(`${API_BASE}/goals/${id}`);
+  }
+
+  copyPreviousMonthGoals(targetYear: number, targetMonth: number) {
+    return this.http.post<{ success: boolean; copied: number }>(`${API_BASE}/goals/copy-previous`, {
+      targetYear,
+      targetMonth,
+    });
+  }
 
   uploadInvoice(data: FormData) {
     return this.http.post<UploadInvoiceResponse>(`${API_BASE}/invoices/upload`, data);

@@ -7,6 +7,7 @@ using Invoice.Api.Models;
 using Invoice.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -68,7 +69,10 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(defaultConnection));
+{
+    options.UseNpgsql(defaultConnection);
+    options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
+});
 
 builder.Services.AddHttpClient<ExtractorClient>(client =>
 {
@@ -755,6 +759,19 @@ app.MapGet("/api/dashboard/monthly-summary", async (int? month, int? year, AppDb
 
     var debits = await transactions.Where(t => t.Amount > 0).SumAsync(t => t.Amount, cancellationToken);
     var credits = await transactions.Where(t => t.Amount < 0).SumAsync(t => t.Amount, cancellationToken);
+    var txList = await transactions
+        .Select(t => new { t.CategoryId, CategoryName = t.Category == null ? "" : t.Category.Name })
+        .ToListAsync(cancellationToken);
+    var totalCount = txList.Count;
+    var uncategorizedCount = txList.Count(t => !t.CategoryId.HasValue || t.CategoryName.Equals("Outros", StringComparison.OrdinalIgnoreCase));
+    var categorizedCount = totalCount - uncategorizedCount;
+    var categorizedPercentage = totalCount > 0 ? Math.Round(((decimal)categorizedCount / totalCount) * 100m, 1) : 0m;
+
+    var overallGoal = await db.MonthlyGoals.FirstOrDefaultAsync(g =>
+        g.UserId == userId &&
+        g.Year == selectedYear &&
+        g.Month == selectedMonth &&
+        g.CategoryId == null, cancellationToken);
 
     return Results.Ok(new
     {
@@ -763,7 +780,11 @@ app.MapGet("/api/dashboard/monthly-summary", async (int? month, int? year, AppDb
         TotalSpent = debits,
         TotalCredits = credits,
         NetAmount = debits + credits,
-        TransactionCount = await transactions.CountAsync(cancellationToken)
+        TransactionCount = totalCount,
+        MonthlyGoal = overallGoal?.Amount ?? 0m,
+        CategorizedCount = categorizedCount,
+        UncategorizedCount = uncategorizedCount,
+        CategorizedPercentage = categorizedPercentage
     });
 }).RequireAuthorization();
 
@@ -837,6 +858,238 @@ app.MapGet("/api/dashboard/month-comparison", async (int? month, int? year, AppD
         Difference = difference,
         Percentage = percentage
     });
+}).RequireAuthorization();
+
+app.MapGet("/api/goals", async (int? month, int? year, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    var selectedMonth = month ?? DateTime.UtcNow.Month;
+    var selectedYear = year ?? DateTime.UtcNow.Year;
+
+    var overallGoal = await db.MonthlyGoals
+        .FirstOrDefaultAsync(g => g.UserId == userId && g.Year == selectedYear && g.Month == selectedMonth && g.CategoryId == null, cancellationToken);
+
+    var categoryGoals = await db.MonthlyGoals
+        .Include(g => g.Category)
+        .Where(g => g.UserId == userId && g.Year == selectedYear && g.Month == selectedMonth && g.CategoryId != null)
+        .ToListAsync(cancellationToken);
+
+    var transactions = db.Transactions.Where(t =>
+        t.UserId == userId &&
+        t.Invoice.ReferenceMonth == selectedMonth &&
+        t.Invoice.ReferenceYear == selectedYear);
+
+    var debits = await transactions.Where(t => t.Amount > 0).SumAsync(t => t.Amount, cancellationToken);
+    var credits = await transactions.Where(t => t.Amount < 0).SumAsync(t => t.Amount, cancellationToken);
+    var netSpent = GoalCalculationService.CalculateNetSpent(debits, credits);
+    var overallGoalAmount = overallGoal?.Amount ?? 0m;
+    var available = GoalCalculationService.CalculateAvailable(overallGoalAmount, netSpent);
+    var percentageUsed = GoalCalculationService.CalculatePercentage(overallGoalAmount, netSpent);
+    var projection = GoalCalculationService.CalculateProjection(netSpent, selectedYear, selectedMonth, DateTime.UtcNow);
+    var status = GoalCalculationService.DetermineStatus(overallGoalAmount, percentageUsed);
+
+    var categorySpending = await transactions
+        .Where(t => t.CategoryId != null)
+        .GroupBy(t => t.CategoryId!.Value)
+        .Select(g => new { CategoryId = g.Key, Total = g.Sum(t => t.Amount) })
+        .ToDictionaryAsync(x => x.CategoryId, x => x.Total, cancellationToken);
+
+    var categoryGoalResponses = categoryGoals.Select(cg =>
+    {
+        var spent = categorySpending.GetValueOrDefault(cg.CategoryId!.Value, 0m);
+        var catAvailable = GoalCalculationService.CalculateAvailable(cg.Amount, spent);
+        var catPct = GoalCalculationService.CalculatePercentage(cg.Amount, spent);
+        var catStatus = GoalCalculationService.DetermineStatus(cg.Amount, catPct);
+        return new
+        {
+            Id = cg.Id,
+            CategoryId = cg.CategoryId!.Value,
+            CategoryName = cg.Category?.Name ?? "Categoria",
+            CategoryColor = cg.Category?.Color ?? "#64748b",
+            CategoryIcon = cg.Category?.Icon ?? "tag",
+            Amount = cg.Amount,
+            Spent = spent,
+            Available = catAvailable,
+            Percentage = catPct,
+            Status = catStatus
+        };
+    }).OrderBy(x => x.CategoryName).ToList();
+
+    var history = new List<object>();
+    for (var i = 1; i <= 6; i++)
+    {
+        var histDate = new DateTime(selectedYear, selectedMonth, 1).AddMonths(-i);
+        var hMonth = histDate.Month;
+        var hYear = histDate.Year;
+
+        var hGoal = await db.MonthlyGoals.FirstOrDefaultAsync(g =>
+            g.UserId == userId && g.Year == hYear && g.Month == hMonth && g.CategoryId == null, cancellationToken);
+
+        var hDebits = await db.Transactions.Where(t =>
+            t.UserId == userId && t.Invoice.ReferenceMonth == hMonth && t.Invoice.ReferenceYear == hYear && t.Amount > 0)
+            .SumAsync(t => t.Amount, cancellationToken);
+        var hCredits = await db.Transactions.Where(t =>
+            t.UserId == userId && t.Invoice.ReferenceMonth == hMonth && t.Invoice.ReferenceYear == hYear && t.Amount < 0)
+            .SumAsync(t => t.Amount, cancellationToken);
+        var hNet = GoalCalculationService.CalculateNetSpent(hDebits, hCredits);
+
+        if (hGoal != null || hNet > 0 || hCredits < 0)
+        {
+            var hGoalAmount = hGoal?.Amount ?? 0m;
+            var diff = hGoalAmount - hNet;
+            var hStatus = hGoalAmount > 0
+                ? (hNet <= hGoalAmount ? "cumprida" : "ultrapassada")
+                : "sem_meta";
+
+            history.Add(new
+            {
+                Year = hYear,
+                Month = hMonth,
+                GoalAmount = hGoalAmount,
+                NetSpent = hNet,
+                Difference = diff,
+                Status = hStatus
+            });
+        }
+    }
+
+    return Results.Ok(new
+    {
+        Year = selectedYear,
+        Month = selectedMonth,
+        OverallGoal = overallGoal == null ? null : new { overallGoal.Id, overallGoal.Amount },
+        Summary = new
+        {
+            GrossSpent = debits,
+            Credits = credits,
+            NetSpent = netSpent,
+            GoalAmount = overallGoalAmount,
+            Available = available,
+            PercentageUsed = percentageUsed,
+            Projection = projection,
+            Status = status
+        },
+        CategoryGoals = categoryGoalResponses,
+        History = history
+    });
+}).RequireAuthorization();
+
+app.MapPost("/api/goals", async (SaveGoalRequest request, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    if (request.Amount < 0)
+    {
+        return Results.BadRequest(new { Detail = "O valor da meta deve ser maior ou igual a zero." });
+    }
+
+    var monthsToApply = new List<(int Year, int Month)> { (request.Year, request.Month) };
+    var repeatCount = Math.Clamp(request.RepeatNextMonths ?? 0, 0, 12);
+    for (var i = 1; i <= repeatCount; i++)
+    {
+        var nextDate = new DateTime(request.Year, request.Month, 1).AddMonths(i);
+        monthsToApply.Add((nextDate.Year, nextDate.Month));
+    }
+
+    foreach (var (y, m) in monthsToApply)
+    {
+        var existing = await db.MonthlyGoals.FirstOrDefaultAsync(g =>
+            g.UserId == userId && g.Year == y && g.Month == m && g.CategoryId == request.CategoryId, cancellationToken);
+
+        if (existing == null)
+        {
+            db.MonthlyGoals.Add(new MonthlyGoal
+            {
+                UserId = userId,
+                Year = y,
+                Month = m,
+                CategoryId = request.CategoryId,
+                Amount = request.Amount,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            existing.Amount = request.Amount;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Ok(new { Success = true, Count = monthsToApply.Count });
+}).RequireAuthorization();
+
+app.MapPut("/api/goals/{id:guid}", async (Guid id, UpdateGoalRequest request, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    var goal = await db.MonthlyGoals.FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId, cancellationToken);
+    if (goal == null) return Results.NotFound();
+
+    if (request.Amount < 0)
+    {
+        return Results.BadRequest(new { Detail = "O valor da meta deve ser maior ou igual a zero." });
+    }
+
+    goal.Amount = request.Amount;
+    goal.UpdatedAt = DateTime.UtcNow;
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Ok(goal);
+}).RequireAuthorization();
+
+app.MapDelete("/api/goals/{id:guid}", async (Guid id, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    var goal = await db.MonthlyGoals.FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId, cancellationToken);
+    if (goal == null) return Results.NotFound();
+
+    db.MonthlyGoals.Remove(goal);
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.NoContent();
+}).RequireAuthorization();
+
+app.MapPost("/api/goals/copy-previous", async (CopyGoalsRequest request, AppDbContext db, HttpContext context, CancellationToken cancellationToken) =>
+{
+    var userId = CurrentUserId(context);
+    var targetDate = new DateTime(request.TargetYear, request.TargetMonth, 1);
+    var prevDate = targetDate.AddMonths(-1);
+
+    var prevGoals = await db.MonthlyGoals
+        .Where(g => g.UserId == userId && g.Year == prevDate.Year && g.Month == prevDate.Month)
+        .ToListAsync(cancellationToken);
+
+    if (prevGoals.Count == 0)
+    {
+        return Results.NotFound(new { Detail = "Nenhuma meta encontrada no mês anterior para copiar." });
+    }
+
+    var copied = 0;
+    foreach (var pg in prevGoals)
+    {
+        var existing = await db.MonthlyGoals.FirstOrDefaultAsync(g =>
+            g.UserId == userId && g.Year == request.TargetYear && g.Month == request.TargetMonth && g.CategoryId == pg.CategoryId, cancellationToken);
+
+        if (existing == null)
+        {
+            db.MonthlyGoals.Add(new MonthlyGoal
+            {
+                UserId = userId,
+                Year = request.TargetYear,
+                Month = request.TargetMonth,
+                CategoryId = pg.CategoryId,
+                Amount = pg.Amount,
+                CreatedAt = DateTime.UtcNow
+            });
+            copied++;
+        }
+        else
+        {
+            existing.Amount = pg.Amount;
+            existing.UpdatedAt = DateTime.UtcNow;
+            copied++;
+        }
+    }
+
+    await db.SaveChangesAsync(cancellationToken);
+    return Results.Ok(new { Copied = copied });
 }).RequireAuthorization();
 
 static string CurrentUserId(HttpContext context) =>
@@ -1053,3 +1306,8 @@ public record NubankCsvConfirmResponse(
     int IgnoredCount,
     int RejectedCount
 );
+
+public record SaveGoalRequest(int Year, int Month, Guid? CategoryId, decimal Amount, int? RepeatNextMonths);
+public record UpdateGoalRequest(decimal Amount);
+public record CopyGoalsRequest(int TargetYear, int TargetMonth);
+

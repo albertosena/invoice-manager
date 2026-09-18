@@ -1,89 +1,191 @@
 <main class="app-shell">
   @if (!isAuthenticated()) {
     <section class="auth-shell">
-      <div class="auth-hero">
-        <p class="eyebrow">Invoice Manager</p>
-        <h1>Controle suas faturas com clareza.</h1>
-        <p>
-          Entre para importar PDFs, categorizar lançamentos e acompanhar seus gastos por usuário.
-        </p>
-      </div>
+      <button
+        type="button"
+        class="auth-theme-toggle theme-toggle-btn"
+        (click)="toggleTheme()"
+        [title]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+        [attr.aria-label]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+      >
+        @if (isDarkMode()) {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2"/>
+            <path d="M12 20v2"/>
+            <path d="m4.93 4.93 1.41 1.41"/>
+            <path d="m17.66 17.66 1.41 1.41"/>
+            <path d="M2 12h2"/>
+            <path d="M20 12h2"/>
+            <path d="m6.34 17.66-1.41 1.41"/>
+            <path d="m19.07 4.93-1.41 1.41"/>
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
+        }
+      </button>
 
-      <section class="auth-card">
-        <div class="auth-tabs">
-          <button
-            type="button"
-            [class.active]="authMode() === 'login'"
-            (click)="authMode.set('login')"
-          >
-            Login
-          </button>
-          <button
-            type="button"
-            [class.active]="authMode() === 'register'"
-            (click)="authMode.set('register')"
-          >
-            Cadastro
-          </button>
+      <div class="auth-card-wrapper">
+        <div class="auth-brand">
+          <div class="brand-badge" aria-hidden="true">IM</div>
+          <h1>Invoice Manager</h1>
+          <p>Controle inteligente e categorização avançada de suas faturas bancárias.</p>
         </div>
 
-        @if (authMessage()) {
-          <p class="auth-message">{{ authMessage() }}</p>
-        }
+        <section class="auth-card">
+          <div class="auth-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              [class.active]="authMode() === 'login'"
+              (click)="authMode.set('login')"
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              role="tab"
+              [class.active]="authMode() === 'register'"
+              (click)="authMode.set('register')"
+            >
+              Criar Conta
+            </button>
+          </div>
 
-        @if (authMode() === 'login') {
-          <form class="auth-form" (ngSubmit)="login()">
-            <label>
-              Email
-              <input
-                name="loginEmail"
-                type="email"
-                autocomplete="email"
-                [(ngModel)]="loginForm.email"
-              />
-            </label>
-            <label>
-              Senha
-              <input
-                name="loginPassword"
-                type="password"
-                autocomplete="current-password"
-                [(ngModel)]="loginForm.password"
-              />
-            </label>
-            <button type="submit" class="primary-action" [disabled]="loading()">Entrar</button>
-          </form>
-        } @else {
-          <form class="auth-form" (ngSubmit)="register()">
-            <label>
-              Nome
-              <input name="registerName" autocomplete="name" [(ngModel)]="registerForm.name" />
-            </label>
-            <label>
-              Email
-              <input
-                name="registerEmail"
-                type="email"
-                autocomplete="email"
-                [(ngModel)]="registerForm.email"
-              />
-            </label>
-            <label>
-              Senha
-              <input
-                name="registerPassword"
-                type="password"
-                autocomplete="new-password"
-                [(ngModel)]="registerForm.password"
-              />
-            </label>
-            <button type="submit" class="primary-action" [disabled]="loading()">Criar conta</button>
-          </form>
-        }
-      </section>
+          @if (authMessage()) {
+            <div class="auth-message-banner" role="alert">
+              <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{{ authMessage() }}</span>
+            </div>
+          }
+
+          @if (authMode() === 'login') {
+            <form class="auth-form" (ngSubmit)="login()">
+              <label class="form-group">
+                <span>Email</span>
+                <div class="input-wrapper">
+                  <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="20" height="16" x="2" y="4" rx="2"/>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                  </svg>
+                  <input
+                    name="loginEmail"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="seu.email@exemplo.com"
+                    [(ngModel)]="loginForm.email"
+                    required
+                  />
+                </div>
+              </label>
+              <label class="form-group">
+                <span>Senha</span>
+                <div class="input-wrapper">
+                  <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <input
+                    name="loginPassword"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="••••••••"
+                    [(ngModel)]="loginForm.password"
+                    required
+                  />
+                </div>
+              </label>
+              <button type="submit" class="primary-action submit-btn" [disabled]="loading()">
+                @if (loading()) {
+                  <span class="spinner" aria-hidden="true"></span>
+                  <span>Acessando...</span>
+                } @else {
+                  <span>Entrar no Painel</span>
+                  <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                }
+              </button>
+            </form>
+          } @else {
+            <form class="auth-form" (ngSubmit)="register()">
+              <label class="form-group">
+                <span>Nome completo</span>
+                <div class="input-wrapper">
+                  <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  <input
+                    name="registerName"
+                    autocomplete="name"
+                    placeholder="Seu Nome"
+                    [(ngModel)]="registerForm.name"
+                    required
+                  />
+                </div>
+              </label>
+              <label class="form-group">
+                <span>Email</span>
+                <div class="input-wrapper">
+                  <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="20" height="16" x="2" y="4" rx="2"/>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                  </svg>
+                  <input
+                    name="registerEmail"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="seu.email@exemplo.com"
+                    [(ngModel)]="registerForm.email"
+                    required
+                  />
+                </div>
+              </label>
+              <label class="form-group">
+                <span>Senha</span>
+                <div class="input-wrapper">
+                  <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <input
+                    name="registerPassword"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="Mínimo de 6 caracteres"
+                    [(ngModel)]="registerForm.password"
+                    required
+                  />
+                </div>
+              </label>
+              <button type="submit" class="primary-action submit-btn" [disabled]="loading()">
+                @if (loading()) {
+                  <span class="spinner" aria-hidden="true"></span>
+                  <span>Criando conta...</span>
+                } @else {
+                  <span>Criar conta</span>
+                  <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                }
+              </button>
+            </form>
+          }
+        </section>
+      </div>
     </section>
   } @else {
     <section class="admin-layout" [class.sidebar-collapsed]="sidebarCollapsed()">
+      <!-- Desktop Sidebar -->
       <aside class="admin-sidebar">
         <button
           type="button"
@@ -92,7 +194,13 @@
           [attr.aria-label]="sidebarCollapsed() ? 'Mostrar menu lateral' : 'Esconder menu lateral'"
           [title]="sidebarCollapsed() ? 'Mostrar menu' : 'Esconder menu'"
         >
-          {{ sidebarCollapsed() ? '›' : '‹' }}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="toggle-icon">
+            @if (sidebarCollapsed()) {
+              <polyline points="9 18 15 12 9 6"/>
+            } @else {
+              <polyline points="15 18 9 12 15 6"/>
+            }
+          </svg>
         </button>
 
         <div class="brand-block">
@@ -109,15 +217,44 @@
             [class.active]="activePage() === 'dashboard'"
             (click)="navigatePage('dashboard')"
           >
-            <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10M9 20v-6h6v6"/></svg></span>
+            <span aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="7" height="9" x="3" y="3" rx="1"/>
+                <rect width="7" height="5" x="14" y="3" rx="1"/>
+                <rect width="7" height="9" x="14" y="12" rx="1"/>
+                <rect width="7" height="5" x="3" y="16" rx="1"/>
+              </svg>
+            </span>
             <strong>Dashboard</strong>
+          </button>
+          <button
+            type="button"
+            [class.active]="activePage() === 'goals'"
+            (click)="navigatePage('goals')"
+          >
+            <span aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="6"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+            </span>
+            <strong>Metas</strong>
           </button>
           <button
             type="button"
             [class.active]="activePage() === 'invoices'"
             (click)="navigatePage('invoices')"
           >
-            <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M9 11h6M9 15h6"/></svg></span>
+            <span aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </span>
             <strong>Faturas</strong>
           </button>
           <button
@@ -125,29 +262,72 @@
             [class.active]="activePage() === 'categories'"
             (click)="navigatePage('categories')"
           >
-            <span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg></span>
+            <span aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
+              </svg>
+            </span>
             <strong>Categorias</strong>
           </button>
         </nav>
 
         <div class="sidebar-support">
-          <span aria-hidden="true">?</span>
+          <span class="support-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </span>
           <div>
             <small>Precisando de ajuda?</small>
             <strong>Central de ajuda</strong>
           </div>
-          <b aria-hidden="true">›</b>
         </div>
 
         <div class="sidebar-user">
-          <div class="avatar" aria-hidden="true">{{ currentUser()?.name?.slice(0, 1) }}</div>
+          <div class="avatar" aria-hidden="true">{{ currentUser()?.name?.slice(0, 1) || 'U' }}</div>
           <div class="user-copy">
             <strong>{{ currentUser()?.name }}</strong>
-            <small>{{ currentUser()?.email }}</small>
+            <small title="{{ currentUser()?.email }}">{{ currentUser()?.email }}</small>
           </div>
+          <button
+            type="button"
+            class="sidebar-theme-toggle"
+            (click)="toggleTheme()"
+            [title]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+            [attr.aria-label]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+          >
+            @if (isDarkMode()) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2"/>
+                <path d="M12 20v2"/>
+                <path d="m4.93 4.93 1.41 1.41"/>
+                <path d="m17.66 17.66 1.41 1.41"/>
+                <path d="M2 12h2"/>
+                <path d="M20 12h2"/>
+                <path d="m6.34 17.66-1.41 1.41"/>
+                <path d="m19.07 4.93-1.41 1.41"/>
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+              </svg>
+            }
+          </button>
+          <button type="button" class="logout-icon-btn" (click)="logout()" title="Sair da conta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
         </div>
       </aside>
 
+      <!-- Main Workspace Area -->
       <section
         class="admin-main"
         (dragover)="onCsvDragOver($event)"
@@ -164,6 +344,7 @@
           </div>
         }
 
+        <!-- Top Header Bar -->
         <header class="admin-header">
           <div class="page-heading">
             <h1>{{ pageTitle() }}</h1>
@@ -184,99 +365,227 @@
                 </select>
               </label>
             }
-            <button type="button" class="ghost-button" (click)="logout()">Sair</button>
-            <label class="upload-button" [class.disabled]="loading()">
-              <span class="button-icon" aria-hidden="true">+</span>
-              <span>Importar PDF</span>
-              <input
-                type="file"
-                accept="application/pdf"
-                (change)="onFileSelected($event)"
-                [disabled]="loading()"
-              />
-            </label>
-            <label class="upload-button csv-button" [class.disabled]="loading()" title="Importar fatura Nubank CSV">
-              <span class="button-icon" aria-hidden="true">+</span>
-              <span>Nubank CSV</span>
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                (change)="onCsvFileSelected($event)"
-                [disabled]="loading()"
-              />
-            </label>
+
+            <div class="topbar-import-buttons">
+              <label class="upload-button itau-button" [class.disabled]="loading()" title="Importar fatura Itaú (PDF)">
+                <span class="button-icon itau-icon" aria-hidden="true">
+                  <svg viewBox="0 0 340 340" fill="currentColor">
+                    <path d="M324.4,47c-3.4-16.4-13-27.3-31.4-31.4-30.1-7.5-74.5-11.6-123-11.6s-92.9,4.1-123,11.6c-18.5,4.1-28,15-31.4,31.4-6.8,28.7-11.6,74.5-11.6,123s4.8,94.3,11.6,123c3.4,16.4,13,27.3,31.4,31.4,30.1,7.5,74.5,11.6,123,11.6s92.9-4.1,123-11.6c18.5-4.1,28-15,31.4-31.4,6.8-28.7,11.6-74.5,11.6-123s-4.8-94.3-11.6-123ZM243.3,156.3h0l40.6-7.3v21.2h-40.6v-13.9h0ZM65,264.6h-24.4v-83.2h24.4v83.2ZM52.8,172.7c-8.5,0-14.4-5.8-14.4-13.9s5.9-13.9,14.4-13.9,14.4,5.8,14.4,13.9-5.9,13.9-14.4,13.9ZM132.1,200.4h-.1c0-.1-21.2-.1-21.2-.1v34c0,8.8,3.5,12.7,11.4,12.7s6.9-.5,8.7-1v18.6c-2.7.8-8.3,1.6-15.1,1.6-18.8,0-29.3-10.1-29.3-30.3v-35.6h-12.2v-18.9h12.2v-20.8l24.4-4.3v25.2h21.2v18.9h0ZM213.1,264.4v.2h-22.8l-.3-8.7c-5,6.7-12,10.7-21.8,10.7-17.5,0-28.5-9.9-28.5-25.7s16.2-28.7,41.8-28.7c6.54,0,4.2,0,6.2,0h2c.1,0,0,0,0,0-.1-8.8-6.4-13.8-17.5-13.8s-18.6,2.2-28.2,5.9v-19.6c9.8-3.7,19.9-5.6,32.1-5.6,23.7,0,37,12.7,37,36.4v48.9ZM299.5,264.7h0c0-.1-23.4-.1-23.4-.1l-.3-9c-5.4,7.4-12.3,11.1-22.4,11.1-17.1,0-28-12.2-28-31.3v-54h24.4v50c0,10.1,4.2,15.6,12.3,15.6s13.1-6.4,13.1-16.5v-49h24.4v83.2h-.1ZM163.3,239.1c0,7.7,4.6,10.1,12.2,10.1s14.4-6.1,14.4-14.9v-6.6c-1.1-.2-4.2-.3-6.1-.3-13.1,0-20.5,4-20.5,11.7h0Z"/>
+                  </svg>
+                </span>
+                <span>Importar Itaú</span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  (change)="onFileSelected($event)"
+                  [disabled]="loading()"
+                />
+              </label>
+
+              <label class="upload-button nubank-button csv-button" [class.disabled]="loading()" title="Importar fatura NuBank (CSV)">
+                <span class="button-icon nubank-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7.2795 5.4336c-1.1815 0-2.1846.4628-2.9432 1.252h-.002c-.0541-.0022-.1074-.002-.162-.002-1.5436 0-2.9925.8835-3.699 2.2559-.3088.5996-.4234 1.2442-.459 1.9003-.0321.589 0 1.1863 0 1.7696v5.6523H3.184s.0022-2.784 0-5.1777c-.0014-1.6112-.0118-3.0471 0-3.3418.056-1.3937.4372-2.3053 1.1484-3.0508 2.3585.0018 3.8852 1.6091 3.9705 4.168.0196.5874.0254 3.7304.0254 3.7304v3.672h3.1678v-4.965c0-1.5007.0127-2.8006-.0918-3.6952-.292-2.5-1.821-4.168-4.1248-4.1248zm8.3903.3008l-3.166.0039v4.9648c0 1.5009-.0127 2.8007.0919 3.6953.2921 2.5001 1.821 4.168 4.1248 4.1248 1.1815 0 2.1846-.4628 2.9432-1.252.0003-.0003.0016.0004.002 0 .0542.0023.1093.002.164.002 1.5435 0 2.9905-.8835 3.6971-2.2558.3088-.5997.4233-1.2442.459-1.9004.032-.5889 0-1.1862 0-1.7695V5.7383H20.816s-.0022 2.784 0 5.1777c.0015 1.6113.0119 3.047 0 3.3418-.056 1.3935-.4372 2.3053-1.1483 3.0508-2.3586-.0018-3.8853-1.6091-3.9706-4.168-.0196-.5874-.0273-2.0437-.0273-3.7324Z"/>
+                  </svg>
+                </span>
+                <span>Importar NuBank</span>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  (change)="onCsvFileSelected($event)"
+                  [disabled]="loading()"
+                />
+              </label>
+            </div>
+
+            <div class="topbar-utility-buttons">
+              <button
+                type="button"
+                class="theme-toggle-btn"
+                (click)="toggleTheme()"
+                [title]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+                [attr.aria-label]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+              >
+                @if (isDarkMode()) {
+                  <!-- Sol: volta ao modo claro -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2"/>
+                    <path d="M12 20v2"/>
+                    <path d="m4.93 4.93 1.41 1.41"/>
+                    <path d="m17.66 17.66 1.41 1.41"/>
+                    <path d="M2 12h2"/>
+                    <path d="M20 12h2"/>
+                    <path d="m6.34 17.66-1.41 1.41"/>
+                    <path d="m19.07 4.93-1.41 1.41"/>
+                  </svg>
+                } @else {
+                  <!-- Lua: vai ao modo escuro -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                  </svg>
+                }
+              </button>
+
+              <button type="button" class="ghost-button logout-btn" (click)="logout()">Sair</button>
+            </div>
           </div>
         </header>
 
         @if (uploadMessage()) {
           <section class="notice" role="status">
-            <span class="notice-icon" aria-hidden="true">i</span>
+            <span class="notice-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+            </span>
             <span>{{ uploadMessage() }}</span>
           </section>
         }
 
+        <!-- DASHBOARD VIEW -->
         @if (activePage() === 'dashboard') {
-          <section class="summary-grid">
-            <article class="metric-card metric-spent">
-              <div class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 6.5c-1-1-2.7-1.5-5-1.5-2.8 0-4.5 1.3-4.5 3.2 0 5 9.5 2 9.5 7 0 2.2-2 3.8-5 3.8-2.2 0-4.1-.7-5.3-1.8"/></svg></div>
-              <span>Total gasto</span>
-              <strong>{{ formatCurrency(monthlySummary()?.totalSpent ?? 0) }}</strong>
-              @if (monthComparison()) {
-                <small
-                  class="metric-trend"
-                  [class.up]="metricDelta('totalSpent') > 0"
-                  [class.down]="metricDelta('totalSpent') < 0"
-                >
-                  <span aria-hidden="true">{{ trendIcon(metricDelta('totalSpent')) }}</span>
-                  {{ formatSignedCurrency(metricDelta('totalSpent')) }} em relação ao mês anterior
-                </small>
-              }
-            </article>
-            <article class="metric-card metric-credit">
-              <div class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h2"/></svg></div>
-              <span>Créditos</span>
-              <strong>{{ formatCurrency(monthlySummary()?.totalCredits ?? 0) }}</strong>
-              @if (monthComparison()) {
-                <small
-                  class="metric-trend"
-                  [class.up]="metricDelta('totalCredits') > 0"
-                  [class.down]="metricDelta('totalCredits') < 0"
-                >
-                  <span aria-hidden="true">{{ trendIcon(metricDelta('totalCredits')) }}</span>
-                  {{ formatSignedCurrency(metricDelta('totalCredits')) }} em relação ao mês anterior
-                </small>
-              }
-            </article>
-            <article class="metric-card metric-net">
-              <div class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg></div>
-              <span>Líquido</span>
-              <strong>{{ formatCurrency(monthlySummary()?.netAmount ?? 0) }}</strong>
-              @if (monthComparison()) {
+          <section class="summary-grid dashboard-top-cards">
+            <!-- Card 1: Gasto líquido no mês (Hero) -->
+            <article class="metric-card metric-card-hero">
+              <div class="metric-card-header">
+                <div class="metric-icon hero-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="20" height="14" x="2" y="5" rx="2"/>
+                    <line x1="2" y1="10" x2="22" y2="10"/>
+                  </svg>
+                </div>
+                <span class="metric-label">Gasto líquido no mês</span>
+              </div>
+              <strong class="metric-value hero-value">{{ formatCurrency(dashboardNetSpent()) }}</strong>
+              <div class="hero-breakdown">
+                <span class="breakdown-item purchases">
+                  <span class="dot-indicator debit-dot" aria-hidden="true"></span>
+                  Compras: {{ formatCurrency(dashboardDebits()) }}
+                </span>
+                <span class="breakdown-separator" aria-hidden="true">•</span>
+                <span class="breakdown-item credits">
+                  <span class="dot-indicator credit-dot" aria-hidden="true"></span>
+                  Créditos: {{ formatCurrency(dashboardCredits()) }}
+                </span>
+              </div>
+              @if (monthComparison() && (monthComparison()!.previous.transactionCount > 0 || monthComparison()!.previous.netAmount !== 0)) {
                 <small
                   class="metric-trend"
                   [class.up]="metricDelta('netAmount') > 0"
                   [class.down]="metricDelta('netAmount') < 0"
                 >
                   <span aria-hidden="true">{{ trendIcon(metricDelta('netAmount')) }}</span>
-                  {{ formatSignedCurrency(metricDelta('netAmount')) }} em relação ao mês anterior
+                  {{ formatSignedCurrency(metricDelta('netAmount')) }} vs mês anterior
                 </small>
               }
             </article>
-            <article class="metric-card">
-              <div class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 8 4-8 4-8-4zM4 12l8 4 8-4M4 17l8 4 8-4"/></svg></div>
-              <span>Lançamentos</span>
-              <strong>{{ monthlySummary()?.transactionCount ?? 0 }}</strong>
-              @if (monthComparison()) {
-                <small
-                  class="metric-trend"
-                  [class.up]="metricDelta('transactionCount') > 0"
-                  [class.down]="metricDelta('transactionCount') < 0"
-                >
-                  <span aria-hidden="true">{{ trendIcon(metricDelta('transactionCount')) }}</span>
-                  {{ formatSignedNumber(metricDelta('transactionCount')) }} em relação ao mês
-                  anterior
-                </small>
+
+            <!-- Card 2: Meta mensal -->
+            <article class="metric-card metric-card-goal">
+              <div class="metric-card-header">
+                <div class="metric-icon goal-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="6"/>
+                    <circle cx="12" cy="12" r="2"/>
+                  </svg>
+                </div>
+                <span class="metric-label">Meta mensal</span>
+                @if (dashboardGoal() > 0) {
+                  <app-goal-status-badge [status]="dashboardGoalStatus()"></app-goal-status-badge>
+                }
+              </div>
+
+              @if (dashboardGoal() > 0) {
+                <div class="goal-amounts-row">
+                  <div class="goal-numbers">
+                    <strong class="metric-value">{{ formatCurrency(dashboardNetSpent()) }}</strong>
+                    <span class="goal-total-text">de {{ formatCurrency(dashboardGoal()) }}</span>
+                  </div>
+                </div>
+
+                <div class="goal-progress-section">
+                  <app-utilization-bar
+                    [percentage]="dashboardGoalPercentage()"
+                    [status]="dashboardGoalStatus()"
+                    [showLabel]="true"
+                    height="8px"
+                  ></app-utilization-bar>
+                </div>
+
+                <div class="goal-footer-info">
+                  @if (dashboardGoalAvailable() >= 0) {
+                    <span class="available-text text-positive">
+                      {{ formatCurrency(dashboardGoalAvailable()) }} disponível
+                    </span>
+                  } @else {
+                    <span class="available-text text-negative">
+                      Ultrapassada em {{ formatCurrency(-dashboardGoalAvailable()) }}
+                    </span>
+                  }
+                  <button type="button" class="card-link-action" (click)="navigatePage('goals')">
+                    Ver metas →
+                  </button>
+                </div>
+              } @else {
+                <div class="card-empty-state">
+                  <p class="empty-state-copy">Nenhuma meta definida para este mês.</p>
+                  <button
+                    type="button"
+                    class="btn-card-action"
+                    (click)="openCreateOverallGoalFromDashboard()"
+                  >
+                    + Criar meta
+                  </button>
+                </div>
               }
+            </article>
+
+            <!-- Card 3: Lançamentos -->
+            <article class="metric-card metric-card-transactions">
+              <div class="metric-card-header">
+                <div class="metric-icon tx-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="8" y1="6" x2="21" y2="6"/>
+                    <line x1="8" y1="12" x2="21" y2="12"/>
+                    <line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="3" y1="6" x2="3.01" y2="6"/>
+                    <line x1="3" y1="12" x2="3.01" y2="12"/>
+                    <line x1="3" y1="18" x2="3.01" y2="18"/>
+                  </svg>
+                </div>
+                <span class="metric-label">Lançamentos</span>
+                <span class="categorized-badge" [class.badge-complete]="dashboardUncategorizedCount() === 0 && (monthlySummary()?.transactionCount ?? 0) > 0">
+                  {{ dashboardCategorizedPercentage() }}% classificados
+                </span>
+              </div>
+
+              <strong class="metric-value">{{ monthlySummary()?.transactionCount ?? 0 }} <small class="unit-label">lançamentos</small></strong>
+
+              <div class="tx-breakdown">
+                <span class="tx-stat categorized-stat">
+                  <strong>{{ dashboardCategorizedCount() }}</strong> categorizados
+                </span>
+                <span class="breakdown-separator" aria-hidden="true">•</span>
+                <span class="tx-stat uncategorized-stat" [class.has-uncategorized]="dashboardUncategorizedCount() > 0">
+                  <strong>{{ dashboardUncategorizedCount() }}</strong> sem categoria
+                </span>
+              </div>
+
+              <div class="tx-footer-action">
+                @if (dashboardUncategorizedCount() > 0) {
+                  <button type="button" class="btn-categorize-now" (click)="goToCategorization()">
+                    Categorizar agora ({{ dashboardUncategorizedCount() }}) →
+                  </button>
+                } @else {
+                  <button type="button" class="btn-categorize-now secondary" (click)="navigatePage('invoices')">
+                    Ver todos os lançamentos →
+                  </button>
+                }
+              </div>
             </article>
           </section>
 
@@ -288,91 +597,128 @@
                   <p>{{ dashboardPeriodLabel() }} vs {{ previousDashboardPeriodLabel() }}</p>
                 </div>
               </div>
-              @if (othersInsight(); as insight) {
-                <div class="insight-warning">
-                  <div>
-                    <strong>{{ insight.count }} lançamentos ainda estão em Outros.</strong>
-                    <p>Crie regras para melhorar sua categorização.</p>
-                  </div>
-                  <button type="button" class="primary-action" (click)="navigatePage('invoices')">
-                    Categorizar lançamentos
-                  </button>
-                </div>
-              }
+
               @if (categoryInsights().length) {
                 <div class="category-insights" aria-label="Destaques por categoria">
                   @for (insight of categoryInsights(); track insight.label) {
                     <article class="category-insight-card" [class]="insight.tone">
                       <span>{{ insight.label }}</span>
                       <strong>{{ insight.categoryName }}</strong>
-                      <small>{{ insight.value }}</small>
+                      <small class="tabular-nums">{{ insight.value }}</small>
                     </article>
                   }
                 </div>
               }
+
               <div class="category-summary">
                 @for (item of categoryComparisonRows(); track item.categoryName) {
                   <article class="category-summary-row">
-                    <div class="summary-row-main">
-                      <div>
-                        <span
-                          class="category-dot"
-                          [style.background]="categoryColor(item.categoryId)"
+                    <!-- Top section: Category Identity & Primary Metrics -->
+                    <div class="category-card-top">
+                      <div class="category-card-identity">
+                        <div
+                          class="category-icon-badge"
+                          [style.background-color]="getCategoryColor(item.categoryId, item.categoryName) + '1a'"
+                          [style.border-color]="getCategoryColor(item.categoryId, item.categoryName) + '40'"
                           aria-hidden="true"
-                        ></span>
-                        <strong>{{ item.categoryName }}</strong>
-                        @if (categoryRowTag(item)) {
-                          <em>{{ categoryRowTag(item) }}</em>
-                        }
-                      </div>
-                      <small
-                        >{{ item.count }} lançamentos no período atual
-                        @if (item.share > 0) {
-                          <span>{{ item.share | number: '1.0-0' }}% do gasto</span>
-                        }
-                      </small>
-                    </div>
-                    <div class="category-amounts">
-                      <strong>{{ formatCurrency(item.total) }}</strong>
-                      <small>Anterior: {{ formatCurrency(item.previousTotal) }}</small>
-                      @if (item.monthlyGoal > 0) {
-                        <small>Meta: {{ formatCurrency(item.monthlyGoal) }}</small>
-                      }
-                    </div>
-                    <div class="category-delta" [class]="categoryTrendClass(item)">
-                      <span aria-hidden="true">{{ trendIcon(item.delta) }}</span>
-                      <div>
-                        <strong>{{ categoryPercentageLabel(item) }}</strong>
-                        <small>{{ categoryDeltaLabel(item) }}</small>
-                      </div>
-                    </div>
-                    <div class="category-bars" aria-hidden="true">
-                      <div class="category-bar-row current">
-                        <span>Atual</span>
-                        <div class="progress-track">
-                          <span [style.width.%]="dashboardCategoryProgress(item.total)"></span>
-                        </div>
-                      </div>
-                      <div class="category-bar-row previous">
-                        <span>Anterior</span>
-                        <div class="progress-track">
+                        >
                           <span
-                            [style.width.%]="dashboardCategoryProgress(item.previousTotal)"
+                            class="category-color-dot"
+                            [style.background-color]="getCategoryColor(item.categoryId, item.categoryName)"
                           ></span>
                         </div>
-                      </div>
-                      @if (item.monthlyGoal > 0) {
-                        <div class="category-bar-row goal">
-                          <span>Meta</span>
-                          <div class="progress-track">
-                            <span [style.width.%]="dashboardCategoryProgress(item.monthlyGoal)"></span>
+                        <div class="category-title-info">
+                          <div class="category-name-line">
+                            <strong class="category-name-text">{{ item.categoryName }}</strong>
+                            @if (categoryRowTag(item)) {
+                              <span class="category-tag-pill">{{ categoryRowTag(item) }}</span>
+                            }
                           </div>
+                          <div class="category-meta-line">
+                            <span class="category-count-text">
+                              {{ item.count }} {{ item.count === 1 ? 'lançamento' : 'lançamentos' }} no período
+                            </span>
+                            @if (item.share > 0) {
+                              <span class="category-share-pill">{{ item.share | number: '1.0-0' }}% do gasto</span>
+                            }
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="category-card-metrics">
+                        <div class="category-total-box">
+                          <strong class="category-total-num tabular-nums">{{ formatCurrency(item.total) }}</strong>
+                          <span class="category-delta-pill" [class]="categoryTrendClass(item)">
+                            <span class="delta-arrow-sym" aria-hidden="true">{{ trendIcon(item.delta) }}</span>
+                            <span class="delta-pct tabular-nums">{{ categoryPercentageLabel(item) }}</span>
+                          </span>
+                        </div>
+                        <div class="category-secondary-metrics">
+                          <span class="metric-note prev-note tabular-nums">
+                            Anterior: <b>{{ formatCurrency(item.previousTotal) }}</b>
+                          </span>
+                          @if (item.monthlyGoal > 0) {
+                            <span class="metric-dot-sep">•</span>
+                            <span class="metric-note goal-note tabular-nums" [class]="categoryGoalStatusClass(item)">
+                              Meta: <b>{{ formatCurrency(item.monthlyGoal) }}</b>
+                            </span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Visual Progress & Comparison Section with Inline Values -->
+                    <div class="category-card-bars" aria-hidden="true">
+                      <div class="bar-comparison-row is-current">
+                        <span class="bar-label">Atual</span>
+                        <div class="bar-track-shell">
+                          <div class="bar-track">
+                            <span
+                              class="bar-fill"
+                              [style.width.%]="dashboardCategoryProgress(item.total)"
+                              [style.background-color]="getCategoryColor(item.categoryId, item.categoryName)"
+                            ></span>
+                          </div>
+                        </div>
+                        <strong class="bar-amount-value tabular-nums">{{ formatCurrency(item.total) }}</strong>
+                      </div>
+
+                      <div class="bar-comparison-row is-previous">
+                        <span class="bar-label">Anterior</span>
+                        <div class="bar-track-shell">
+                          <div class="bar-track">
+                            <span
+                              class="bar-fill prev-fill"
+                              [style.width.%]="dashboardCategoryProgress(item.previousTotal)"
+                            ></span>
+                          </div>
+                        </div>
+                        <span class="bar-amount-value tabular-nums">{{ formatCurrency(item.previousTotal) }}</span>
+                      </div>
+
+                      @if (item.monthlyGoal > 0) {
+                        <div class="bar-comparison-row is-goal">
+                          <span class="bar-label">Meta</span>
+                          <div class="bar-track-shell">
+                            <div class="bar-track">
+                              <span
+                                class="bar-fill goal-fill"
+                                [style.width.%]="dashboardCategoryProgress(item.monthlyGoal)"
+                              ></span>
+                            </div>
+                          </div>
+                          <span class="bar-amount-value goal-val tabular-nums">{{ formatCurrency(item.monthlyGoal) }}</span>
+                        </div>
+
+                        <div class="category-goal-status-strip" [class]="categoryGoalStatusClass(item)">
+                          <span class="status-dot"></span>
+                          <span class="status-text">{{ categoryGoalStatusText(item) }}</span>
                         </div>
                       }
                     </div>
                   </article>
                 } @empty {
-                  <p class="empty">Sem dados para o período selecionado.</p>
+                  <p class="empty boxed-empty">Sem dados para o período selecionado.</p>
                 }
               </div>
             </section>
@@ -388,16 +734,22 @@
                 </button>
               </div>
               <div class="invoice-list compact-list">
-                  @for (invoice of recentInvoices(); track invoice.id) {
+                @for (invoice of recentInvoices(); track invoice.id) {
                   <button type="button" class="invoice-item" (click)="openInvoice(invoice.id)">
-                    <span class="pdf-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h4"/></svg><b>PDF</b></span>
+                    <span class="pdf-badge" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                      </svg>
+                      <b>PDF</b>
+                    </span>
                     <span class="invoice-copy">
                       <span class="invoice-name">{{ invoice.originalFileName }}</span>
                       <small>{{ formatPeriodLabel(invoice.referenceYear + '-' + (invoice.referenceMonth < 10 ? '0' : '') + invoice.referenceMonth) }} • {{ invoice.transactionCount }} itens</small>
-                      <em>{{ invoiceStatusLabel(invoice.status) }}</em>
+                      <em [class]="'status-' + invoice.status">{{ invoiceStatusLabel(invoice.status) }}</em>
                     </span>
                     <span class="invoice-date">{{ invoice.createdAt | date: 'dd/MM/yyyy' }}</span>
-                    <span class="invoice-action">Abrir <b aria-hidden="true">›</b></span>
+                    <span class="invoice-action">Abrir <b aria-hidden="true">&rsaquo;</b></span>
                   </button>
                 } @empty {
                   <p class="empty boxed-empty">
@@ -409,138 +761,246 @@
           </section>
         }
 
+        <!-- INVOICES VIEW -->
         @if (activePage() === 'invoices') {
           <section class="summary-grid">
             <article class="metric-card metric-spent">
-              <div class="metric-icon" aria-hidden="true">$</div>
-              <span>Total gasto</span>
-              <strong>{{ formatCurrency(selectedInvoiceSummary().totalSpent) }}</strong>
+              <div class="metric-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="1" x2="12" y2="23"/>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <span class="metric-label">Total gasto</span>
+              <strong class="metric-value tabular-nums">{{ formatCurrency(selectedInvoiceSummary().totalSpent) }}</strong>
             </article>
             <article class="metric-card metric-credit">
-              <div class="metric-icon" aria-hidden="true">+</div>
-              <span>Créditos</span>
-              <strong>{{ formatCurrency(selectedInvoiceSummary().totalCredits) }}</strong>
+              <div class="metric-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                  <polyline points="17 6 23 6 23 12"/>
+                </svg>
+              </div>
+              <span class="metric-label">Créditos</span>
+              <strong class="metric-value tabular-nums">{{ formatCurrency(selectedInvoiceSummary().totalCredits) }}</strong>
             </article>
             <article class="metric-card metric-net">
-              <div class="metric-icon" aria-hidden="true">=</div>
-              <span>Líquido</span>
-              <strong>{{ formatCurrency(selectedInvoiceSummary().netAmount) }}</strong>
+              <div class="metric-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="20" height="14" x="2" y="5" rx="2"/>
+                  <line x1="2" y1="10" x2="22" y2="10"/>
+                </svg>
+              </div>
+              <span class="metric-label">Líquido</span>
+              <strong class="metric-value tabular-nums">{{ formatCurrency(selectedInvoiceSummary().netAmount) }}</strong>
             </article>
             <article class="metric-card">
-              <div class="metric-icon" aria-hidden="true">#</div>
-              <span>Lançamentos</span>
-              <strong>{{ selectedInvoiceSummary().transactionCount }}</strong>
+              <div class="metric-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                </svg>
+              </div>
+              <span class="metric-label">Lançamentos</span>
+              <strong class="metric-value tabular-nums">{{ selectedInvoiceSummary().transactionCount }}</strong>
             </article>
           </section>
 
           <section class="workspace" #invoiceWorkspace>
             <aside class="dashboard-sidebar" #invoiceSidebar>
-              <section class="panel invoices">
-                <div class="panel-title">
-                  <div>
-                    <h2>Faturas</h2>
-                    <p>{{ invoices().length }} importadas</p>
+              <section class="panel invoices-sidebar-panel">
+                <div class="panel-title sidebar-panel-title">
+                  <div class="title-with-pill">
+                    <div class="title-row">
+                      <h2>Faturas</h2>
+                      <span class="count-pill">{{ invoices().length }}</span>
+                    </div>
+                    <p>{{ invoices().length === 1 ? '1 fatura importada' : invoices().length + ' faturas importadas' }}</p>
                   </div>
                   <button
                     type="button"
-                    class="icon-button"
+                    class="icon-button refresh-btn"
+                    [class.spinning]="refreshingInvoices()"
                     (click)="loadInvoices()"
-                    title="Atualizar faturas"
+                    title="Atualizar lista de faturas"
+                    aria-label="Atualizar lista de faturas"
                   >
-                    R
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <polyline points="23 4 23 10 17 10"/>
+                      <polyline points="1 20 1 14 7 14"/>
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
                   </button>
                 </div>
 
-                <div class="invoice-list">
+                <div class="sidebar-invoice-list invoice-list">
                   @for (invoice of invoices(); track invoice.id) {
-                    <div class="invoice-row" [class.active]="invoice.id === selectedInvoiceId()">
+                    <div
+                      class="sidebar-invoice-card invoice-row"
+                      [class.active]="invoice.id === selectedInvoiceId()"
+                    >
                       <button
                         type="button"
-                        class="invoice-item"
+                        class="invoice-select-action invoice-item"
                         (click)="loadTransactions(invoice.id)"
+                        [title]="'Selecionar fatura: ' + invoice.originalFileName"
                       >
-                        <span class="invoice-name">{{ invoice.originalFileName }}</span>
-                        <small
-                          >{{
-                            formatPeriodLabel(
-                              invoice.referenceYear +
-                                '-' +
-                                (invoice.referenceMonth < 10 ? '0' : '') +
-                                invoice.referenceMonth
-                            )
-                          }}
-                          - {{ invoice.transactionCount }} itens</small
+                        <div
+                          class="invoice-file-icon"
+                          [class.nubank-icon]="isNubankInvoice(invoice)"
+                          aria-hidden="true"
                         >
+                          @if (isNubankInvoice(invoice)) {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect width="20" height="14" x="2" y="5" rx="2"/>
+                              <line x1="2" y1="10" x2="22" y2="10"/>
+                            </svg>
+                          } @else {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                              <line x1="16" y1="13" x2="8" y2="13"/>
+                              <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                          }
+                        </div>
+                        <div class="invoice-text-info">
+                          <span class="invoice-display-name invoice-name" [title]="invoice.originalFileName">
+                            {{ invoice.originalFileName }}
+                          </span>
+                          <div class="invoice-sub-meta">
+                            <span class="period-text">
+                              {{
+                                formatPeriodLabel(
+                                  invoice.referenceYear +
+                                    '-' +
+                                    (invoice.referenceMonth < 10 ? '0' : '') +
+                                    invoice.referenceMonth
+                                )
+                              }}
+                            </span>
+                            <span class="meta-separator">•</span>
+                            <span class="items-count-text">{{ invoice.transactionCount }} itens</span>
+                          </div>
+                        </div>
                       </button>
                       <button
                         type="button"
-                        class="danger-icon"
+                        class="invoice-delete-action danger-icon"
                         (click)="deleteInvoice(invoice, $event)"
                         title="Excluir fatura"
+                        aria-label="Excluir fatura"
                       >
-                        x
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
                       </button>
                     </div>
                   } @empty {
-                    <p class="empty boxed-empty">Importe uma fatura PDF para começar.</p>
+                    <p class="empty boxed-empty">Importe uma fatura PDF ou CSV para começar.</p>
                   }
                 </div>
               </section>
 
-              <section class="panel">
-                <div class="panel-title">
-                  <div>
-                    <h2>Resumo por categoria</h2>
+              <section class="panel invoice-cat-panel">
+                <div class="panel-title sidebar-panel-title">
+                  <div class="title-with-pill">
+                    <div class="title-row">
+                      <h2>Resumo por categoria</h2>
+                      @if (selectedInvoiceCategorySummary().length) {
+                        <span class="count-pill">{{ selectedInvoiceCategorySummary().length }}</span>
+                      }
+                    </div>
                     @if (selectedInvoice()) {
-                      <p>{{ selectedInvoice()?.originalFileName }}</p>
+                      <p class="invoice-subtitle-label" [title]="selectedInvoice()?.originalFileName">
+                        {{ selectedInvoice()?.originalFileName }}
+                      </p>
+                    } @else {
+                      <p>Selecione uma fatura para ver o resumo</p>
                     }
                   </div>
                 </div>
-                <div class="category-summary">
+
+                <div class="sidebar-cat-list category-summary">
                   @for (item of selectedInvoiceCategorySummary(); track item.categoryName) {
-                    <div class="category-summary-row invoice-category-row">
-                      <div class="summary-row-main">
-                        <span>{{ item.categoryName }}</span>
-                        <small>{{ item.count }} lançamentos</small>
+                    <div
+                      class="sidebar-cat-card category-summary-row invoice-category-row"
+                      [class.is-credit]="isCreditCategory(item)"
+                    >
+                      <div class="cat-card-header summary-row-main">
+                        <div class="cat-name-group">
+                          <span
+                            class="cat-dot"
+                            [style.background-color]="getCategoryColor(item.categoryId, item.categoryName)"
+                            aria-hidden="true"
+                          ></span>
+                          <span class="cat-title" [title]="item.categoryName">{{ item.categoryName }}</span>
+                        </div>
+                        <strong class="cat-amount tabular-nums" [class.credit-amount]="isCreditCategory(item)">
+                          {{ formatCurrency(item.total) }}
+                        </strong>
                       </div>
-                      <strong>{{ formatCurrency(item.total) }}</strong>
-                      <div class="progress-track" aria-hidden="true">
-                        <span [style.width.%]="categoryProgress(item.total)"></span>
+
+                      <div class="cat-card-sub">
+                        <span class="cat-count">
+                          {{ item.count }} {{ item.count === 1 ? 'lançamento' : 'lançamentos' }}
+                        </span>
+                        @if (selectedInvoiceSummary().totalSpent > 0 && item.total > 0) {
+                          <span class="cat-share">
+                            {{ getCategoryInvoicePercentage(item.total) }}% da fatura
+                          </span>
+                        }
+                      </div>
+
+                      <div class="cat-progress-bar progress-track" aria-hidden="true">
+                        <span
+                          class="cat-progress-fill"
+                          [style.width.%]="categoryProgress(item.total)"
+                          [style.background-color]="getCategoryColor(item.categoryId, item.categoryName)"
+                        ></span>
                       </div>
                     </div>
                   } @empty {
-                    <p class="empty">Selecione uma fatura para ver o resumo.</p>
+                    <p class="empty boxed-empty">Selecione uma fatura para ver o resumo.</p>
                   }
                 </div>
               </section>
             </aside>
 
+            <!-- Main Table Panel -->
             <section class="panel transactions">
               <div class="transaction-filters filter-bar">
-                <label>
-                  Buscar
+                <label class="search-field">
+                  <span class="search-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                  </span>
                   <input
                     name="transactionSearch"
-                    placeholder="Descrição, data ou valor"
+                    placeholder="Buscar por descrição, data ou valor..."
                     [ngModel]="transactionSearch()"
                     (ngModelChange)="transactionSearch.set($event)"
                   />
                 </label>
-                <label>
-                  Categoria
+                <label class="filter-field">
+                  <span>Categoria</span>
                   <select
                     name="transactionCategoryFilter"
                     [ngModel]="transactionCategoryFilter()"
                     (ngModelChange)="transactionCategoryFilter.set($event)"
                   >
-                    <option value="">Todas</option>
+                    <option value="">Todas as categorias</option>
                     @for (category of categories(); track category.id) {
                       <option [value]="category.id">{{ category.name }}</option>
                     }
                   </select>
                 </label>
-                <label>
-                  Filtro
+                <label class="filter-field">
+                  <span>Filtro</span>
                   <select
                     name="transactionQuickFilter"
                     [ngModel]="transactionQuickFilter()"
@@ -551,9 +1011,23 @@
                     }
                   </select>
                 </label>
-                <button type="button" class="ghost-button" (click)="clearTransactionFilters()">
+                <button type="button" class="ghost-button clear-btn" (click)="clearTransactionFilters()">
                   Limpar
                 </button>
+              </div>
+
+              <!-- Fast Filter Pills -->
+              <div class="quick-filter-chips">
+                @for (filter of transactionQuickFilterOptions; track filter.value) {
+                  <button
+                    type="button"
+                    class="chip-btn"
+                    [class.active]="transactionQuickFilter() === filter.value"
+                    (click)="changeTransactionQuickFilter(filter.value)"
+                  >
+                    {{ filter.label }}
+                  </button>
+                }
               </div>
 
               <div class="table-wrap">
@@ -570,7 +1044,7 @@
                       </th>
                       <th>Data</th>
                       <th>Descrição</th>
-                      <th>Valor</th>
+                      <th class="text-right">Valor</th>
                       <th>Tipo</th>
                       <th>Categoria</th>
                       <th>Status</th>
@@ -592,18 +1066,20 @@
                             [attr.aria-label]="'Selecionar ' + transaction.description"
                           />
                         </td>
-                        <td class="date-cell">{{ transaction.date }}</td>
+                        <td class="date-cell tabular-nums">{{ transaction.date }}</td>
                         <td class="description-cell">
                           <strong>{{ transaction.description }}</strong>
                           @if (transaction.rawCategory) {
                             <small>{{ transaction.rawCategory }}</small>
                           }
                         </td>
-                        <td class="money-cell" [class.credit]="transaction.amount < 0">
-                          <span>{{ formatCurrency(transaction.amount) }}</span>
+                        <td class="money-cell text-right" [class.credit]="transaction.amount < 0">
+                          <span class="tabular-nums">{{ formatCurrency(transaction.amount) }}</span>
                         </td>
                         <td class="type-cell">
-                          {{ transaction.amount < 0 ? 'Crédito' : 'Débito' }}
+                          <span class="type-tag" [class.type-credit]="transaction.amount < 0">
+                            {{ transaction.amount < 0 ? 'Crédito' : 'Débito' }}
+                          </span>
                         </td>
                         <td>
                           <div
@@ -641,125 +1117,126 @@
           </section>
         }
 
+        <!-- CATEGORIES VIEW -->
         @if (activePage() === 'categories') {
           <section class="categories-page">
             <section class="category-summary-strip">
               <article class="metric-card compact-metric">
-                <span>Categorias</span>
-                <strong>{{ categories().length }}</strong>
+                <span class="metric-label">Categorias</span>
+                <strong class="metric-value">{{ categories().length }}</strong>
               </article>
               <article class="metric-card compact-metric">
-                <span>Regras ativas</span>
-                <strong>{{ activeRulesCount() }}</strong>
+                <span class="metric-label">Regras ativas</span>
+                <strong class="metric-value">{{ activeRulesCount() }}</strong>
               </article>
               @if (othersInsight(); as insight) {
                 <article class="metric-card compact-metric metric-warning">
-                  <span>Itens em Outros</span>
-                  <strong>{{ insight.count }}</strong>
+                  <span class="metric-label">Itens em Outros</span>
+                  <strong class="metric-value">{{ insight.count }}</strong>
                 </article>
               }
             </section>
 
             <section class="panel category-editor">
-                <div class="panel-title">
-                  <div>
-                    <h2>{{ editingCategoryId() ? 'Editar categoria' : 'Nova categoria' }}</h2>
-                    <p>
-                      Crie categorias, ajuste cores e defina metas mensais de gasto.
-                    </p>
-                  </div>
+              <div class="panel-title">
+                <div>
+                  <h2>{{ editingCategoryId() ? 'Editar categoria' : 'Nova categoria' }}</h2>
+                  <p>Crie categorias, ajuste cores e defina metas mensais de gasto.</p>
                 </div>
-                <form class="category-form form-grid" (ngSubmit)="createCategory()">
-                  <label>
-                    Nome
-                    <input name="name" placeholder="Ex.: Mercado" [(ngModel)]="newCategory.name" />
-                  </label>
-                  <label>
-                    Cor
+              </div>
+              <form class="category-form form-grid" (ngSubmit)="createCategory()">
+                <label>
+                  Nome
+                  <input name="name" placeholder="Ex.: Mercado, Alimentação" [(ngModel)]="newCategory.name" required />
+                </label>
+                <label>
+                  Cor
+                  <div class="color-input-wrapper">
                     <input name="color" type="color" [(ngModel)]="newCategory.color" />
-                  </label>
-                  <label>
-                    Ícone
-                    <input
-                      name="icon"
-                      placeholder="Ex.: shopping-cart, pill, car, home"
-                      [(ngModel)]="newCategory.icon"
-                    />
-                  </label>
-                  <label>
-                    Meta mensal
-                    <input
-                      name="monthlyGoal"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0,00"
-                      [(ngModel)]="newCategory.monthlyGoal"
-                    />
-                  </label>
-                  <div class="form-actions">
-                    @if (editingCategoryId()) {
-                      <button
-                        type="button"
-                        class="ghost-button"
-                        (click)="resetCategoryForm()"
-                      >
-                        Cancelar
-                      </button>
-                    }
-                    <button type="submit" class="primary-action">
-                      {{ editingCategoryId() ? 'Salvar categoria' : 'Criar categoria' }}
-                    </button>
+                    <span>{{ newCategory.color }}</span>
                   </div>
-                </form>
+                </label>
+                <label>
+                  Ícone
+                  <input
+                    name="icon"
+                    placeholder="Ex.: shopping-cart, utensils, car"
+                    [(ngModel)]="newCategory.icon"
+                  />
+                </label>
+                <label>
+                  Meta mensal (R$)
+                  <input
+                    name="monthlyGoal"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0,00"
+                    [(ngModel)]="newCategory.monthlyGoal"
+                  />
+                </label>
+                <div class="form-actions">
+                  @if (editingCategoryId()) {
+                    <button
+                      type="button"
+                      class="ghost-button"
+                      (click)="resetCategoryForm()"
+                    >
+                      Cancelar
+                    </button>
+                  }
+                  <button type="submit" class="primary-action">
+                    {{ editingCategoryId() ? 'Salvar categoria' : 'Criar categoria' }}
+                  </button>
+                </div>
+              </form>
             </section>
 
             <section class="panel rule-editor">
-                <div class="panel-title">
-                  <div>
-                    <h2>{{ ruleForm.id ? 'Editar regra' : 'Nova regra' }}</h2>
-                    <p>
-                      Quando a descrição do lançamento contiver este texto, aplicar a categoria
-                      escolhida.
-                    </p>
-                  </div>
+              <div class="panel-title">
+                <div>
+                  <h2>{{ ruleForm.id ? 'Editar regra' : 'Nova regra' }}</h2>
+                  <p>
+                    Quando a descrição do lançamento contiver este texto, aplicar a categoria escolhida.
+                  </p>
                 </div>
-                <form class="rule-form form-grid" (ngSubmit)="saveRule()">
-                  <label>
-                    Texto para identificar
-                    <input
-                      id="rulePattern"
-                      name="rulePattern"
-                      placeholder="Ex.: IFOOD, UBER, NETFLIX"
-                      [(ngModel)]="ruleForm.pattern"
-                    />
-                  </label>
-                  <label>
-                    Categoria
-                    <select name="ruleCategory" [(ngModel)]="ruleForm.categoryId">
-                      <option value="">Selecione uma categoria</option>
-                      @for (category of categories(); track category.id) {
-                        <option [value]="category.id">{{ category.name }}</option>
-                      }
-                    </select>
-                  </label>
-                  <div class="form-actions">
-                    @if (ruleForm.id) {
-                      <button type="button" class="ghost-button" (click)="resetRuleForm()">
-                        Cancelar
-                      </button>
+              </div>
+              <form class="rule-form form-grid" (ngSubmit)="saveRule()">
+                <label>
+                  Texto para identificar
+                  <input
+                    id="rulePattern"
+                    name="rulePattern"
+                    placeholder="Ex.: IFOOD, UBER, NETFLIX"
+                    [(ngModel)]="ruleForm.pattern"
+                  />
+                </label>
+                <label>
+                  Categoria
+                  <select name="ruleCategory" [(ngModel)]="ruleForm.categoryId">
+                    <option value="">Selecione uma categoria</option>
+                    @for (category of categories(); track category.id) {
+                      <option [value]="category.id">{{ category.name }}</option>
                     }
-                    <button type="submit" class="primary-action">
-                      {{ ruleForm.id ? 'Salvar regra' : 'Criar regra' }}
+                  </select>
+                </label>
+                <div class="form-actions">
+                  @if (ruleForm.id) {
+                    <button type="button" class="ghost-button" (click)="resetRuleForm()">
+                      Cancelar
                     </button>
-                  </div>
-                  @if (ruleFormMessage()) {
-                    <p class="form-message">{{ ruleFormMessage() }}</p>
                   }
-                  @if (rulePreview()) {
-                    <p class="rule-preview">{{ rulePreview() }}</p>
-                  }
-                </form>
+                  <button type="submit" class="primary-action">
+                    {{ ruleForm.id ? 'Salvar regra' : 'Criar regra' }}
+                  </button>
+                </div>
+                @if (ruleFormMessage()) {
+                  <p class="form-message">{{ ruleFormMessage() }}</p>
+                }
+                @if (rulePreview()) {
+                  <p class="rule-preview">{{ rulePreview() }}</p>
+                }
+              </form>
             </section>
 
             <section class="panel categories-list-panel">
@@ -792,7 +1269,7 @@
                           <span class="category-icon-name">{{ category.icon || 'tag' }}</span>
                           <span>{{ categoryRuleCount(category.id) }} regra(s)</span>
                           @if (category.monthlyGoal > 0) {
-                            <span>Meta {{ formatCurrency(category.monthlyGoal) }}</span>
+                            <span class="tabular-nums">Meta {{ formatCurrency(category.monthlyGoal) }}</span>
                           }
                         </small>
                       </div>
@@ -857,7 +1334,10 @@
                         (click)="deleteRule(rule)"
                         title="Excluir regra"
                       >
-                        x
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
                       </button>
                     </div>
                   </div>
@@ -877,9 +1357,330 @@
             </section>
           </section>
         }
+
+        <!-- GOALS VIEW -->
+        @if (activePage() === 'goals') {
+          <section class="goals-page">
+            <!-- Header bar with month selector and quick actions -->
+            <header class="goals-header-bar">
+              <div class="goals-period-block">
+                <span class="period-label">Mês de referência:</span>
+                <div class="period-select">
+                  <select [value]="goalsPeriod()" (change)="changeGoalsPeriod($any($event.target).value)">
+                    @for (option of periodOptions(); track option) {
+                      <option [value]="option">{{ formatPeriodLabel(option) }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <div class="goals-action-buttons">
+                <button type="button" class="ghost-button" (click)="copyPreviousMonthGoals()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-icon">
+                    <rect width="13" height="13" x="9" y="9" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copiar do mês anterior
+                </button>
+                <button type="button" class="ghost-button" (click)="openCreateOverallGoal()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-icon">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="6"/>
+                    <circle cx="12" cy="12" r="2"/>
+                  </svg>
+                  Definir meta geral
+                </button>
+                <button type="button" class="primary-action" (click)="openCreateCategoryGoal()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-icon">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Nova meta por categoria
+                </button>
+              </div>
+            </header>
+
+            <!-- Monthly Overview Panel -->
+            @if (goalsData(); as gd) {
+              <section class="panel goals-overview-panel">
+                <div class="panel-title">
+                  <div>
+                    <div class="eyebrow">Acompanhamento Mensal</div>
+                    <h2>Visão Geral de Metas — {{ goalsPeriodLabel() }}</h2>
+                  </div>
+                  <app-goal-status-badge [status]="gd.summary.status"></app-goal-status-badge>
+                </div>
+
+                <div class="overview-metrics-grid">
+                  <div class="overview-metric-card">
+                    <span class="overview-label">Meta Geral</span>
+                    <strong class="overview-value">
+                      {{ gd.summary.goalAmount > 0 ? formatCurrency(gd.summary.goalAmount) : 'Não definida' }}
+                    </strong>
+                    @if (gd.summary.goalAmount > 0) {
+                      <button type="button" class="inline-edit-btn" (click)="openCreateOverallGoal()">Editar meta</button>
+                    } @else {
+                      <button type="button" class="inline-edit-btn" (click)="openCreateOverallGoal()">+ Definir meta</button>
+                    }
+                  </div>
+
+                  <div class="overview-metric-card">
+                    <span class="overview-label">Gasto Líquido</span>
+                    <strong class="overview-value">{{ formatCurrency(gd.summary.netSpent) }}</strong>
+                    <small class="overview-hint">
+                      Compras: {{ formatCurrency(gd.summary.grossSpent) }} | Créditos: {{ formatCurrency(gd.summary.credits) }}
+                    </small>
+                  </div>
+
+                  <div class="overview-metric-card">
+                    <span class="overview-label">Saldo Disponível</span>
+                    <strong
+                      class="overview-value"
+                      [class.text-danger]="gd.summary.available < 0"
+                      [class.text-success]="gd.summary.available >= 0 && gd.summary.goalAmount > 0"
+                    >
+                      {{ gd.summary.goalAmount > 0 ? formatCurrency(gd.summary.available) : '—' }}
+                    </strong>
+                    <small class="overview-hint">
+                      @if (gd.summary.goalAmount > 0) {
+                        {{ gd.summary.available >= 0 ? 'Dentro do orçamento' : 'Orçamento estourado' }}
+                      } @else {
+                        Defina uma meta geral
+                      }
+                    </small>
+                  </div>
+
+                  <div class="overview-metric-card progress-metric-card">
+                    <span class="overview-label">% Utilizado</span>
+                    <div class="overview-progress-block">
+                      <strong class="overview-value">{{ gd.summary.percentageUsed }}%</strong>
+                      <app-utilization-bar
+                        [percentage]="gd.summary.percentageUsed"
+                        [status]="gd.summary.status"
+                        height="10px"
+                      ></app-utilization-bar>
+                    </div>
+                    <small class="overview-hint">
+                      Ritmo de consumo do orçamento
+                    </small>
+                  </div>
+
+                  <div class="overview-metric-card">
+                    <span class="overview-label">Projeção Fim do Mês</span>
+                    <strong class="overview-value">{{ formatCurrency(gd.summary.projection) }}</strong>
+                    <small class="overview-hint">
+                      Ritmo diário projetado
+                    </small>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Category Goals Section -->
+              <section class="panel category-goals-panel">
+                <div class="panel-title">
+                  <div>
+                    <div class="eyebrow">Limites Específicos</div>
+                    <h2>Metas por Categoria</h2>
+                  </div>
+                  <button type="button" class="ghost-button btn-sm" (click)="openCreateCategoryGoal()">
+                    + Adicionar categoria
+                  </button>
+                </div>
+
+                @if (gd.categoryGoals.length > 0) {
+                  <div class="category-goals-grid">
+                    @for (cg of gd.categoryGoals; track cg.id) {
+                      <article class="category-goal-card">
+                        <header class="cat-goal-header">
+                          <div class="cat-info">
+                            <span class="cat-color-badge" [style.backgroundColor]="cg.categoryColor"></span>
+                            <div>
+                              <strong>{{ cg.categoryName }}</strong>
+                              <small>{{ formatCurrency(cg.spent) }} de {{ formatCurrency(cg.amount) }}</small>
+                            </div>
+                          </div>
+                          <app-goal-status-badge [status]="cg.status"></app-goal-status-badge>
+                        </header>
+
+                        <div class="cat-goal-progress">
+                          <app-utilization-bar
+                            [percentage]="cg.percentage"
+                            [status]="cg.status"
+                            [showLabel]="true"
+                            height="8px"
+                          ></app-utilization-bar>
+                        </div>
+
+                        <footer class="cat-goal-footer">
+                          <div class="cat-available-info">
+                            @if (cg.available >= 0) {
+                              <span class="text-positive">{{ formatCurrency(cg.available) }} disponível</span>
+                            } @else {
+                              <span class="text-negative">Ultrapassada em {{ formatCurrency(-cg.available) }}</span>
+                            }
+                          </div>
+                          <div class="cat-actions">
+                            <button type="button" class="btn-icon-action" (click)="openEditGoal(cg)" title="Editar meta">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                            <button type="button" class="btn-icon-action btn-delete" (click)="deleteGoal(cg.id)" title="Excluir meta">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </footer>
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <div class="goals-empty-state">
+                    <div class="empty-icon-wrapper" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <circle cx="12" cy="12" r="6"/>
+                        <circle cx="12" cy="12" r="2"/>
+                      </svg>
+                    </div>
+                    <h3>Nenhuma meta por categoria definida para este mês.</h3>
+                    <p>Adicione limites para categorias como Alimentação, Transporte, Lazer e acompanhe seus gastos de perto.</p>
+                    <button type="button" class="primary-action" (click)="openCreateCategoryGoal()">
+                      + Adicionar meta por categoria
+                    </button>
+                  </div>
+                }
+              </section>
+
+              <!-- History Section -->
+              <section class="panel goals-history-panel">
+                <div class="panel-title">
+                  <div>
+                    <div class="eyebrow">Evolução Histórica</div>
+                    <h2>Histórico dos Últimos Meses</h2>
+                  </div>
+                </div>
+
+                @if (gd.history.length > 0) {
+                  <div class="history-table-wrapper">
+                    <table class="history-table">
+                      <thead>
+                        <tr>
+                          <th>Mês / Ano</th>
+                          <th class="text-right">Meta Estipulada</th>
+                          <th class="text-right">Gasto Real</th>
+                          <th class="text-right">Diferença</th>
+                          <th class="text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (h of gd.history; track (h.year + '-' + h.month)) {
+                          <tr>
+                            <td class="history-period-col">
+                              <strong>{{ formatPeriodLabel(h.year + '-' + (h.month < 10 ? '0' + h.month : h.month)) }}</strong>
+                            </td>
+                            <td class="text-right tabular-nums">
+                              {{ h.goalAmount > 0 ? formatCurrency(h.goalAmount) : '—' }}
+                            </td>
+                            <td class="text-right tabular-nums">
+                              {{ formatCurrency(h.netSpent) }}
+                            </td>
+                            <td class="text-right tabular-nums" [class.text-positive]="h.difference >= 0 && h.goalAmount > 0" [class.text-negative]="h.difference < 0 && h.goalAmount > 0">
+                              {{ h.goalAmount > 0 ? formatSignedCurrency(h.difference) : '—' }}
+                            </td>
+                            <td class="text-center">
+                              @if (h.status === 'cumprida') {
+                                <span class="history-status-badge badge-cumprida">Cumprida</span>
+                              } @else if (h.status === 'ultrapassada') {
+                                <span class="history-status-badge badge-ultrapassada">Ultrapassada</span>
+                              } @else {
+                                <span class="history-status-badge badge-sem-meta">Sem meta</span>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <p class="history-empty-message">Nenhum histórico disponível para períodos anteriores.</p>
+                }
+              </section>
+            }
+          </section>
+        }
       </section>
+
+      <!-- Mobile Bottom Navigation Bar -->
+      <nav class="mobile-bottom-nav" aria-label="Navegação móvel">
+        <button
+          type="button"
+          [class.active]="activePage() === 'dashboard'"
+          (click)="navigatePage('dashboard')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="7" height="9" x="3" y="3" rx="1"/>
+            <rect width="7" height="5" x="14" y="3" rx="1"/>
+            <rect width="7" height="9" x="14" y="12" rx="1"/>
+            <rect width="7" height="5" x="3" y="16" rx="1"/>
+          </svg>
+          <span>Dashboard</span>
+        </button>
+        <button
+          type="button"
+          [class.active]="activePage() === 'goals'"
+          (click)="navigatePage('goals')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="6"/>
+            <circle cx="12" cy="12" r="2"/>
+          </svg>
+          <span>Metas</span>
+        </button>
+        <button
+          type="button"
+          [class.active]="activePage() === 'invoices'"
+          (click)="navigatePage('invoices')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          <span>Faturas</span>
+        </button>
+        <button
+          type="button"
+          [class.active]="activePage() === 'categories'"
+          (click)="navigatePage('categories')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+            <line x1="7" y1="7" x2="7.01" y2="7"/>
+          </svg>
+          <span>Categorias</span>
+        </button>
+        <button
+          type="button"
+          class="mobile-logout"
+          (click)="logout()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>Sair</span>
+        </button>
+      </nav>
     </section>
 
+    <!-- Modal de Regra de Categorização -->
     @if (pendingRule(); as rule) {
       <div class="modal-backdrop">
         <section class="rule-modal" role="dialog" aria-modal="true">
@@ -890,11 +1691,14 @@
             </div>
             <button
               type="button"
-              class="icon-button"
+              class="icon-button close-btn"
               (click)="closeCategorizationRuleModal()"
               title="Fechar"
             >
-              x
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
             </button>
           </header>
 
@@ -918,7 +1722,7 @@
           <p class="modal-note">A regra será criada usando exatamente o texto digitado acima.</p>
 
           <footer>
-            <button type="button" (click)="closeCategorizationRuleModal()">Não agora</button>
+            <button type="button" class="ghost-button" (click)="closeCategorizationRuleModal()">Não agora</button>
             <button type="button" class="primary-action" (click)="saveCategorizationRule()">
               Criar regra
             </button>
@@ -927,6 +1731,7 @@
       </div>
     }
 
+    <!-- Modal de Prévia Nubank CSV -->
     @if (showNubankPreviewModal()) {
       <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="nubank-preview-title">
         <section class="nubank-preview-modal">
@@ -944,7 +1749,10 @@
               (click)="cancelNubankPreview()"
               title="Fechar prévia"
             >
-              x
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
             </button>
           </header>
 
@@ -981,37 +1789,37 @@
           <div class="preview-metrics-strip">
             <div class="metric-pill">
               <span>Total de linhas</span>
-              <strong>{{ nubankPreviewResponse()?.totalLines ?? 0 }}</strong>
+              <strong class="tabular-nums">{{ nubankPreviewResponse()?.totalLines ?? 0 }}</strong>
             </div>
             <div class="metric-pill pill-success">
               <span>Válidas</span>
-              <strong>{{ nubankValidItems().length }}</strong>
+              <strong class="tabular-nums">{{ nubankValidItems().length }}</strong>
             </div>
             @if (nubankInvalidCount() > 0) {
               <div class="metric-pill pill-danger highlight">
                 <span>Inválidas</span>
-                <strong>{{ nubankInvalidCount() }}</strong>
+                <strong class="tabular-nums">{{ nubankInvalidCount() }}</strong>
               </div>
             }
             @if (nubankDuplicateCount() > 0) {
               <div class="metric-pill pill-warning highlight">
                 <span>Alertas</span>
-                <strong>{{ nubankDuplicateCount() }}</strong>
+                <strong class="tabular-nums">{{ nubankDuplicateCount() }}</strong>
               </div>
             }
             <div class="metric-pill">
               <span>Compras</span>
-              <strong>{{ formatCurrency(nubankSelectedDebits()) }}</strong>
+              <strong class="tabular-nums">{{ formatCurrency(nubankSelectedDebits()) }}</strong>
             </div>
             @if (nubankSelectedCredits() < 0) {
               <div class="metric-pill pill-success">
                 <span>Estornos</span>
-                <strong>{{ formatCurrency(nubankSelectedCredits()) }}</strong>
+                <strong class="tabular-nums">{{ formatCurrency(nubankSelectedCredits()) }}</strong>
               </div>
             }
             <div class="metric-pill pill-highlight">
               <span>Fatura (Líquido)</span>
-              <strong>{{ formatCurrency(nubankSelectedTotal()) }}</strong>
+              <strong class="tabular-nums">{{ formatCurrency(nubankSelectedTotal()) }}</strong>
             </div>
           </div>
 
@@ -1049,8 +1857,8 @@
                   <th class="col-select"></th>
                   <th class="col-date">Data</th>
                   <th class="col-desc">Descrição</th>
-                  <th class="col-amount">Valor</th>
-                  <th class="col-type">Tipo</th>
+                  <th class="col-amount text-right">Valor</th>
+                  <th class="col-type text-center">Tipo</th>
                   <th class="col-cat">Categoria</th>
                   <th class="col-status">Status</th>
                 </tr>
@@ -1091,13 +1899,13 @@
                     <td class="col-amount" [class.credit-val]="item.amount < 0">
                       <input
                         type="text"
-                        class="cell-input amount-cell"
+                        class="cell-input amount-cell tabular-nums"
                         [value]="item.amount"
                         (change)="updateNubankItemAmount($index, $any($event.target).value)"
                         [disabled]="!item.isValid"
                       />
                     </td>
-                    <td class="col-type">
+                    <td class="col-type text-center">
                       <span class="type-tag" [class.tag-credit]="item.type === 'credito'">
                         {{ item.type === 'credito' ? 'Crédito' : 'Débito' }}
                       </span>
@@ -1150,5 +1958,16 @@
         </section>
       </div>
     }
+
+    <!-- Modal de Metas Mensais -->
+    <app-goal-modal
+      [isOpen]="isGoalModalOpen()"
+      [mode]="goalModalMode()"
+      [categories]="categories()"
+      [initialData]="goalModalInitialData()"
+      [existingCategoryIds]="goalsExistingCategoryIds()"
+      (save)="handleGoalModalSave($event)"
+      (close)="closeGoalModal()"
+    ></app-goal-modal>
   }
 </main>
