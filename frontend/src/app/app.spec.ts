@@ -585,4 +585,35 @@ describe('App', () => {
       expect(api.deleteGoal).toHaveBeenCalledWith('cg-1');
     });
   });
+
+  describe('Dark Mode Theme', () => {
+    afterEach(() => {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.removeItem('invoice_theme');
+    });
+
+    it('initializes theme and toggles between light and dark', () => {
+      component.isDarkMode.set(false);
+      component.applyTheme(false);
+      expect(document.documentElement.getAttribute('data-theme')).toBeNull();
+
+      component.toggleTheme();
+      expect(component.isDarkMode()).toBeTrue();
+      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+      expect(localStorage.getItem('invoice_theme')).toBe('dark');
+
+      component.toggleTheme();
+      expect(component.isDarkMode()).toBeFalse();
+      expect(document.documentElement.getAttribute('data-theme')).toBeNull();
+      expect(localStorage.getItem('invoice_theme')).toBe('light');
+    });
+
+    it('applies dark theme attribute when dark is true', () => {
+      component.applyTheme(true);
+      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+
+      component.applyTheme(false);
+      expect(document.documentElement.getAttribute('data-theme')).toBeNull();
+    });
+  });
 });

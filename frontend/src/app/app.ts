@@ -106,6 +106,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     transactionIds?: string[];
   } | null>(null);
   refreshingInvoices = signal(false);
+  isDarkMode = signal<boolean>(this.readStoredTheme());
 
   // Nubank CSV import state
   showNubankPreviewModal = signal(false);
@@ -462,6 +463,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.applyTheme(this.isDarkMode());
     this.syncPageFromUrl();
     window.addEventListener('popstate', () => this.syncPageFromUrl());
 
@@ -1408,6 +1410,41 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     } catch {
       return null;
     }
+  }
+
+  toggleTheme(): void {
+    const next = !this.isDarkMode();
+    this.isDarkMode.set(next);
+    this.applyTheme(next);
+    try {
+      localStorage.setItem('invoice_theme', next ? 'dark' : 'light');
+    } catch {
+      // ignore
+    }
+  }
+
+  applyTheme(dark: boolean): void {
+    if (typeof document !== 'undefined') {
+      if (dark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    }
+  }
+
+  private readStoredTheme(): boolean {
+    try {
+      const saved = localStorage.getItem('invoice_theme');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+    } catch {
+      // ignore
+    }
+    return false;
   }
 
   private suggestPattern(value: string): string {

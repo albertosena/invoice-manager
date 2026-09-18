@@ -1,6 +1,32 @@
 <main class="app-shell">
   @if (!isAuthenticated()) {
     <section class="auth-shell">
+      <button
+        type="button"
+        class="auth-theme-toggle theme-toggle-btn"
+        (click)="toggleTheme()"
+        [title]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+        [attr.aria-label]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+      >
+        @if (isDarkMode()) {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2"/>
+            <path d="M12 20v2"/>
+            <path d="m4.93 4.93 1.41 1.41"/>
+            <path d="m17.66 17.66 1.41 1.41"/>
+            <path d="M2 12h2"/>
+            <path d="M20 12h2"/>
+            <path d="m6.34 17.66-1.41 1.41"/>
+            <path d="m19.07 4.93-1.41 1.41"/>
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
+        }
+      </button>
+
       <div class="auth-card-wrapper">
         <div class="auth-brand">
           <div class="brand-badge" aria-hidden="true">IM</div>
@@ -266,6 +292,31 @@
             <strong>{{ currentUser()?.name }}</strong>
             <small title="{{ currentUser()?.email }}">{{ currentUser()?.email }}</small>
           </div>
+          <button
+            type="button"
+            class="sidebar-theme-toggle"
+            (click)="toggleTheme()"
+            [title]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+            [attr.aria-label]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+          >
+            @if (isDarkMode()) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2"/>
+                <path d="M12 20v2"/>
+                <path d="m4.93 4.93 1.41 1.41"/>
+                <path d="m17.66 17.66 1.41 1.41"/>
+                <path d="M2 12h2"/>
+                <path d="M20 12h2"/>
+                <path d="m6.34 17.66-1.41 1.41"/>
+                <path d="m19.07 4.93-1.41 1.41"/>
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+              </svg>
+            }
+          </button>
           <button type="button" class="logout-icon-btn" (click)="logout()" title="Sair da conta">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -344,6 +395,34 @@
                 [disabled]="loading()"
               />
             </label>
+
+            <button
+              type="button"
+              class="theme-toggle-btn"
+              (click)="toggleTheme()"
+              [title]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+              [attr.aria-label]="isDarkMode() ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'"
+            >
+              @if (isDarkMode()) {
+                <!-- Sol: volta ao modo claro -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="4"/>
+                  <path d="M12 2v2"/>
+                  <path d="M12 20v2"/>
+                  <path d="m4.93 4.93 1.41 1.41"/>
+                  <path d="m17.66 17.66 1.41 1.41"/>
+                  <path d="M2 12h2"/>
+                  <path d="M20 12h2"/>
+                  <path d="m6.34 17.66-1.41 1.41"/>
+                  <path d="m19.07 4.93-1.41 1.41"/>
+                </svg>
+              } @else {
+                <!-- Lua: vai ao modo escuro -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                </svg>
+              }
+            </button>
 
             <button type="button" class="ghost-button logout-btn" (click)="logout()">Sair</button>
           </div>
