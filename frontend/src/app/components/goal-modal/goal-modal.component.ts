@@ -290,13 +290,13 @@ export interface GoalModalSaveEvent {
       cursor: not-allowed;
     }
     :host-context([data-theme="dark"]) .form-control {
-      background: #162032;
-      border-color: #334155;
-      color: #f8fafc;
+      background: var(--bg-card-muted, #1e2636);
+      border-color: var(--border-color, #374459);
+      color: var(--text-main, #e2e8f0);
     }
     :host-context([data-theme="dark"]) .form-control option {
-      background: #111827;
-      color: #f8fafc;
+      background: var(--bg-card, #242c3d);
+      color: var(--text-main, #e2e8f0);
     }
   `]
 })

@@ -66,7 +66,7 @@ import { GoalStatus } from '../../models/invoice.models';
     .progress-text.no_goal { color: #64748b; }
 
     :host-context([data-theme="dark"]) .progress-track {
-      background: #1f2937;
+      background: var(--border-color, #374459);
     }
     :host-context([data-theme="dark"]) .progress-text.normal { color: #34d399; }
     :host-context([data-theme="dark"]) .progress-text.warning { color: #fbbf24; }

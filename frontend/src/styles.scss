@@ -58,52 +58,52 @@
 
 :root[data-theme="dark"],
 [data-theme="dark"] {
-  /* Surfaces & Backgrounds */
-  --bg-page: #0b0f19;
-  --bg-card: #111827;
-  --bg-card-muted: #1f2937;
-  --bg-subtle: #1e293b;
-  --bg-hover: #1f2937;
+  /* Surfaces & Backgrounds (Soft Slate Dim - Suave, confortável e sem reflexo) */
+  --bg-page: #1a202c;
+  --bg-card: #242c3d;
+  --bg-card-muted: #1e2636;
+  --bg-subtle: #283346;
+  --bg-hover: #2d394e;
 
-  /* Borders */
-  --border-color: #1f2937;
-  --border-color-subtle: #162032;
+  /* Borders (Fosco e suave, sem brilho agressivo) */
+  --border-color: #374459;
+  --border-color-subtle: #2b3648;
   --border-focus: #818cf8;
 
-  /* Typography Colors */
-  --text-main: #f8fafc;
+  /* Typography Colors (Branco fosco / Slate claro - Sem brilho ou ofuscamento) */
+  --text-main: #e2e8f0;
   --text-muted: #94a3b8;
-  --text-subtle: #64748b;
+  --text-subtle: #6b7c93;
   --text-inverted: #0f172a;
 
-  /* Primary Brand */
+  /* Primary Brand (Indigo equilibrado) */
   --brand-primary: #6366f1;
   --brand-primary-hover: #818cf8;
-  --brand-primary-light: rgba(99, 102, 241, 0.18);
-  --brand-primary-border: rgba(99, 102, 241, 0.35);
+  --brand-primary-light: rgba(99, 102, 241, 0.16);
+  --brand-primary-border: rgba(99, 102, 241, 0.3);
 
-  /* Financial Accents */
-  --debit-rose: #fb7185;
-  --debit-rose-bg: rgba(244, 63, 94, 0.15);
-  --debit-rose-border: rgba(244, 63, 94, 0.3);
-  --debit-rose-text: #fda4af;
+  /* Financial Accents (Tons foscos, suaves e harmônicos) */
+  --debit-rose: #f87171;
+  --debit-rose-bg: rgba(248, 113, 113, 0.14);
+  --debit-rose-border: rgba(248, 113, 113, 0.28);
+  --debit-rose-text: #fca5a5;
 
   --credit-emerald: #34d399;
-  --credit-emerald-bg: rgba(16, 185, 129, 0.15);
-  --credit-emerald-border: rgba(16, 185, 129, 0.3);
+  --credit-emerald-bg: rgba(52, 211, 153, 0.14);
+  --credit-emerald-border: rgba(52, 211, 153, 0.28);
   --credit-emerald-text: #6ee7b7;
 
   --warning-amber: #fbbf24;
-  --warning-amber-bg: rgba(245, 158, 11, 0.15);
-  --warning-amber-border: rgba(245, 158, 11, 0.3);
+  --warning-amber-bg: rgba(251, 191, 36, 0.14);
+  --warning-amber-border: rgba(251, 191, 36, 0.28);
   --warning-amber-text: #fde68a;
 
-  /* Shadows for dark mode */
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.45), 0 1px 2px -1px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+  /* Shadows suaves e difusas */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.22), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.28), 0 4px 6px -4px rgba(0, 0, 0, 0.22);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.32), 0 8px 10px -6px rgba(0, 0, 0, 0.25);
 }
 
 *, *::before, *::after {
@@ -622,31 +622,31 @@ button, input, select, textarea {
 
   /* Custom Scrollbar in Dark Mode */
   ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #374459;
 
     &:hover {
-      background: #475569;
+      background: #4a5b75;
     }
   }
 
   .icon-button {
-    background: var(--bg-card, #111827);
-    border-color: var(--border-color, #1f2937);
+    background: var(--bg-card, #242c3d);
+    border-color: var(--border-color, #374459);
     color: var(--text-muted, #94a3b8);
 
     &:hover {
-      background: var(--bg-hover, #1f2937);
+      background: var(--bg-hover, #2d394e);
       color: var(--brand-primary, #6366f1);
-      border-color: #374151;
+      border-color: #4a5b75;
     }
   }
 
   .drag-box {
-    background: var(--bg-card, #111827);
+    background: var(--bg-card, #242c3d);
     border-color: #a855f7;
 
     strong {
-      color: var(--text-main, #f8fafc);
+      color: var(--text-main, #e2e8f0);
     }
     small {
       color: var(--text-muted, #94a3b8);
@@ -654,40 +654,40 @@ button, input, select, textarea {
   }
 
   .nubank-preview-modal {
-    background: var(--bg-card, #111827);
-    border: 1px solid var(--border-color, #1f2937);
+    background: var(--bg-card, #242c3d);
+    border: 1px solid var(--border-color, #374459);
 
     .modal-top {
-      border-bottom-color: var(--border-color, #1f2937);
+      border-bottom-color: var(--border-color, #374459);
 
       h2 {
-        color: var(--text-main, #f8fafc);
+        color: var(--text-main, #e2e8f0);
       }
       .modal-subtitle {
         color: var(--text-muted, #94a3b8);
       }
       .icon-button {
-        background: var(--bg-card-muted, #1f2937);
+        background: var(--bg-card-muted, #1e2636);
         color: var(--text-muted, #94a3b8);
         &:hover {
-          background: #374151;
-          color: var(--text-main, #f8fafc);
+          background: var(--bg-hover, #2d394e);
+          color: var(--text-main, #e2e8f0);
         }
       }
     }
 
     .preview-config-grid {
-      background: #0d1322;
-      border-bottom-color: var(--border-color, #1f2937);
+      background: var(--bg-card-muted, #1e2636);
+      border-bottom-color: var(--border-color, #374459);
 
       .modal-field {
         span {
           color: var(--text-muted, #94a3b8);
         }
         select, input {
-          background: var(--bg-card, #111827);
-          border-color: #374151;
-          color: var(--text-main, #f8fafc);
+          background: var(--bg-card, #242c3d);
+          border-color: var(--border-color, #374459);
+          color: var(--text-main, #e2e8f0);
 
           &:focus {
             border-color: #a855f7;
@@ -697,29 +697,29 @@ button, input, select, textarea {
     }
 
     .preview-metrics-strip {
-      background: var(--bg-card, #111827);
-      border-bottom-color: var(--border-color, #1f2937);
+      background: var(--bg-card, #242c3d);
+      border-bottom-color: var(--border-color, #374459);
 
       .metric-pill {
-        background: #1e293b;
-        border-color: #334155;
+        background: var(--bg-subtle, #283346);
+        border-color: var(--border-color, #374459);
 
         span { color: var(--text-muted, #94a3b8); }
-        strong { color: var(--text-main, #f8fafc); }
+        strong { color: var(--text-main, #e2e8f0); }
 
         &.pill-success {
-          background: rgba(16, 185, 129, 0.15);
-          border-color: rgba(16, 185, 129, 0.3);
+          background: rgba(52, 211, 153, 0.14);
+          border-color: rgba(52, 211, 153, 0.28);
           strong { color: #34d399; }
         }
         &.pill-danger {
-          background: rgba(244, 63, 94, 0.15);
-          border-color: rgba(244, 63, 94, 0.3);
-          strong { color: #fb7185; }
+          background: rgba(248, 113, 113, 0.14);
+          border-color: rgba(248, 113, 113, 0.28);
+          strong { color: #f87171; }
         }
         &.pill-warning {
-          background: rgba(245, 158, 11, 0.15);
-          border-color: rgba(245, 158, 11, 0.3);
+          background: rgba(251, 191, 36, 0.14);
+          border-color: rgba(251, 191, 36, 0.28);
           strong { color: #fbbf24; }
         }
         &.pill-highlight {
@@ -731,40 +731,40 @@ button, input, select, textarea {
     }
 
     .preview-actions-bar {
-      background: var(--bg-card, #111827);
-      border-bottom-color: var(--border-color, #1f2937);
+      background: var(--bg-card, #242c3d);
+      border-bottom-color: var(--border-color, #374459);
 
       .left-actions {
         .toggle-all-label {
           color: var(--text-muted, #94a3b8);
         }
         .secondary-button.small {
-          background: #1f2937;
-          border-color: #374151;
+          background: var(--bg-card-muted, #1e2636);
+          border-color: var(--border-color, #374459);
           color: #fbbf24;
           &:hover {
-            background: #374151;
+            background: var(--bg-hover, #2d394e);
           }
         }
       }
       .right-stats {
         color: var(--text-muted, #94a3b8);
-        strong { color: var(--text-main, #f8fafc); }
+        strong { color: var(--text-main, #e2e8f0); }
       }
     }
 
     .preview-table-container {
       .preview-table {
         thead th {
-          background: #162032;
+          background: var(--bg-subtle, #283346);
           color: var(--text-muted, #94a3b8);
-          border-bottom-color: var(--border-color, #1f2937);
+          border-bottom-color: var(--border-color, #374459);
         }
         tbody tr {
-          border-bottom-color: #1e293b;
+          border-bottom-color: var(--border-color-subtle, #2b3648);
 
           &:hover {
-            background: #162032;
+            background: var(--bg-hover, #2d394e);
           }
           &.row-selected {
             background: rgba(168, 85, 247, 0.12);
@@ -777,32 +777,32 @@ button, input, select, textarea {
           }
         }
         .desc-text {
-          color: var(--text-main, #f8fafc);
+          color: var(--text-main, #e2e8f0);
         }
         .desc-category {
-          color: var(--text-subtle, #64748b);
+          color: var(--text-subtle, #6b7c93);
         }
         .col-amount strong {
-          color: var(--text-main, #f8fafc);
+          color: var(--text-main, #e2e8f0);
         }
         .category-picker-cell select {
-          background: #1f2937;
-          border-color: #374151;
-          color: var(--text-main, #f8fafc);
+          background: var(--bg-card-muted, #1e2636);
+          border-color: var(--border-color, #374459);
+          color: var(--text-main, #e2e8f0);
         }
       }
     }
 
     .modal-footer {
-      background: var(--bg-card, #111827);
-      border-top-color: var(--border-color, #1f2937);
+      background: var(--bg-card, #242c3d);
+      border-top-color: var(--border-color, #374459);
 
       .secondary-button {
-        background: #1f2937;
-        border-color: #374151;
-        color: var(--text-main, #f8fafc);
+        background: var(--bg-card-muted, #1e2636);
+        border-color: var(--border-color, #374459);
+        color: var(--text-main, #e2e8f0);
         &:hover {
-          background: #374151;
+          background: var(--bg-hover, #2d394e);
         }
       }
     }
