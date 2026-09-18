@@ -10,6 +10,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<CategorizationRule> CategorizationRules => Set<CategorizationRule>();
+    public DbSet<MonthlyGoal> MonthlyGoals => Set<MonthlyGoal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +49,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.ToTable("categorization_rules");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.NormalizedPattern);
+        });
+
+        modelBuilder.Entity<MonthlyGoal>(entity =>
+        {
+            entity.ToTable("monthly_goals");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Amount).HasPrecision(14, 2);
+            entity.HasOne(x => x.Category)
+                .WithMany()
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.UserId, x.Year, x.Month })
+                .HasFilter("\"CategoryId\" IS NULL")
+                .IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.Year, x.Month, x.CategoryId })
+                .HasFilter("\"CategoryId\" IS NOT NULL")
+                .IsUnique();
         });
     }
 }

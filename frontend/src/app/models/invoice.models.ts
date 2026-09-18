@@ -46,6 +46,10 @@ export type MonthlySummary = {
   totalCredits: number;
   netAmount: number;
   transactionCount: number;
+  monthlyGoal?: number;
+  categorizedCount?: number;
+  uncategorizedCount?: number;
+  categorizedPercentage?: number;
 };
 
 export type MonthComparison = {
@@ -92,7 +96,51 @@ export type AuthResponse = {
   user: User;
 };
 
-export type Page = 'dashboard' | 'invoices' | 'categories';
+export type Page = 'dashboard' | 'invoices' | 'goals' | 'categories';
+
+export type GoalStatus = 'normal' | 'warning' | 'danger' | 'no_goal';
+
+export type CategoryGoalItem = {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  categoryIcon: string;
+  amount: number;
+  spent: number;
+  available: number;
+  percentage: number;
+  status: GoalStatus;
+};
+
+export type GoalSummary = {
+  grossSpent: number;
+  credits: number;
+  netSpent: number;
+  goalAmount: number;
+  available: number;
+  percentageUsed: number;
+  projection: number;
+  status: GoalStatus;
+};
+
+export type GoalHistoryMonth = {
+  year: number;
+  month: number;
+  goalAmount: number;
+  netSpent: number;
+  difference: number;
+  status: 'cumprida' | 'ultrapassada' | 'sem_meta';
+};
+
+export type GoalsResponse = {
+  year: number;
+  month: number;
+  overallGoal: { id: string; amount: number } | null;
+  summary: GoalSummary;
+  categoryGoals: CategoryGoalItem[];
+  history: GoalHistoryMonth[];
+};
 
 export type TransactionQuickFilter =
   | 'all'

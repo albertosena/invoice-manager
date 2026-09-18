@@ -21,6 +21,10 @@ import {
   CategoryComparison,
   CategoryInsight,
   CategorySummary,
+  GoalHistoryMonth,
+  GoalStatus,
+  GoalSummary,
+  GoalsResponse,
   Invoice,
   MonthComparison,
   MonthlySummary,
@@ -33,10 +37,23 @@ import {
   TransactionQuickFilter,
   User,
 } from './models/invoice.models';
+import { UtilizationBarComponent } from './components/utilization-bar/utilization-bar.component';
+import { GoalStatusBadgeComponent } from './components/goal-status-badge/goal-status-badge.component';
+import {
+  GoalModalComponent,
+  GoalModalMode,
+  GoalModalSaveEvent,
+} from './components/goal-modal/goal-modal.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    UtilizationBarComponent,
+    GoalStatusBadgeComponent,
+    GoalModalComponent,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -50,6 +67,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   private readonly pagePaths: Record<Page, string> = {
     dashboard: '/dashboard',
     invoices: '/invoices',
+    goals: '/goals',
     categories: '/categories',
   };
 
@@ -145,6 +163,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     const titles: Record<Page, string> = {
       dashboard: 'Dashboard',
       invoices: 'Faturas',
+      goals: 'Metas Mensais',
       categories: 'Categorias',
     };
     return titles[this.activePage()];
@@ -152,8 +171,9 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
 
   pageSubtitle = computed(() => {
     const subtitles: Record<Page, string> = {
-      dashboard: 'Visão geral das suas faturas, gastos e categorias.',
+      dashboard: 'Visão geral das suas faturas, gastos e metas.',
       invoices: 'Importe PDFs, selecione faturas e categorize lançamentos.',
+      goals: 'Acompanhe suas metas de gastos gerais e por categoria.',
       categories: 'Organize categorias, regras e classificações automáticas.',
     };
     return subtitles[this.activePage()];
@@ -162,6 +182,51 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
   dashboardPeriodLabel = computed(() => this.formatPeriodLabel(this.dashboardPeriod()));
   previousDashboardPeriodLabel = computed(() =>
     this.formatPeriodLabel(this.previousDashboardPeriodValue()),
+  );
+
+  // Goals page state
+  goalsData = signal<GoalsResponse | null>(null);
+  goalsPeriod = signal(this.currentPeriodValue());
+  goalsPeriodLabel = computed(() => this.formatPeriodLabel(this.goalsPeriod()));
+  isGoalModalOpen = signal(false);
+  goalModalMode = signal<GoalModalMode>('overall');
+  goalModalInitialData = signal<{
+    id?: string;
+    categoryId?: string | null;
+    categoryName?: string;
+    amount: number;
+    repeatNextMonths?: number;
+  } | null>(null);
+  goalsExistingCategoryIds = computed(() =>
+    (this.goalsData()?.categoryGoals ?? []).map((cg) => cg.categoryId),
+  );
+
+  // Dashboard 3 Cards computeds
+  dashboardNetSpent = computed(() => this.monthlySummary()?.netAmount ?? 0);
+  dashboardDebits = computed(() => this.monthlySummary()?.totalSpent ?? 0);
+  dashboardCredits = computed(() => this.monthlySummary()?.totalCredits ?? 0);
+  dashboardGoal = computed(() => this.monthlySummary()?.monthlyGoal ?? 0);
+  dashboardGoalPercentage = computed(() => {
+    const goal = this.dashboardGoal();
+    if (goal <= 0) return 0;
+    return Math.round((this.dashboardNetSpent() / goal) * 1000) / 10;
+  });
+  dashboardGoalAvailable = computed(() => {
+    const goal = this.dashboardGoal();
+    return goal - this.dashboardNetSpent();
+  });
+  dashboardGoalStatus = computed<GoalStatus>(() => {
+    const goal = this.dashboardGoal();
+    if (goal <= 0) return 'no_goal';
+    const pct = this.dashboardGoalPercentage();
+    if (pct >= 100) return 'danger';
+    if (pct >= 80) return 'warning';
+    return 'normal';
+  });
+  dashboardCategorizedCount = computed(() => this.monthlySummary()?.categorizedCount ?? 0);
+  dashboardUncategorizedCount = computed(() => this.monthlySummary()?.uncategorizedCount ?? 0);
+  dashboardCategorizedPercentage = computed(
+    () => this.monthlySummary()?.categorizedPercentage ?? 0,
   );
 
   selectedInvoice = computed(
@@ -425,6 +490,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     this.loadCategories();
     this.loadCategorizationRules();
     this.loadDashboard();
+    this.loadGoals();
   }
 
   private observeInvoiceSidebarHeight(): void {
@@ -485,6 +551,7 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     this.categorySummary.set([]);
     this.monthlySummary.set(null);
     this.monthComparison.set(null);
+    this.goalsData.set(null);
     this.selectedInvoiceId.set(null);
     localStorage.removeItem('invoice-manager-token');
     localStorage.removeItem('invoice-manager-user');
@@ -758,6 +825,9 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     if (window.location.pathname !== path) {
       history.pushState(null, '', path);
     }
+    if (page === 'goals') {
+      this.loadGoals();
+    }
   }
 
   loadCategories(): void {
@@ -799,6 +869,137 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
     this.invoiceApi
       .getMonthComparison(params)
       .subscribe((comparison) => this.monthComparison.set(comparison));
+  }
+
+  loadGoals(period = this.goalsPeriod()): void {
+    const [year, month] = period.split('-').map(Number);
+    this.invoiceApi.getGoals(year, month).subscribe({
+      next: (data) => this.goalsData.set(data),
+      error: () => this.goalsData.set(null),
+    });
+  }
+
+  changeGoalsPeriod(value: string): void {
+    this.goalsPeriod.set(value);
+    this.loadGoals(value);
+  }
+
+  openCreateOverallGoal(): void {
+    this.goalModalMode.set('overall');
+    const existing = this.goalsData()?.overallGoal;
+    this.goalModalInitialData.set(
+      existing ? { id: existing.id, amount: existing.amount } : null,
+    );
+    this.isGoalModalOpen.set(true);
+  }
+
+  openCreateOverallGoalFromDashboard(): void {
+    this.goalsPeriod.set(this.dashboardPeriod());
+    this.goalModalMode.set('overall');
+    const goalAmount = this.monthlySummary()?.monthlyGoal ?? 0;
+    this.goalModalInitialData.set(
+      goalAmount > 0 ? { amount: goalAmount } : null,
+    );
+    this.isGoalModalOpen.set(true);
+  }
+
+  openCreateCategoryGoal(): void {
+    this.goalModalMode.set('category');
+    this.goalModalInitialData.set(null);
+    this.isGoalModalOpen.set(true);
+  }
+
+  openEditGoal(item: {
+    id: string;
+    categoryId?: string | null;
+    categoryName?: string;
+    amount: number;
+  }): void {
+    this.goalModalMode.set('edit');
+    this.goalModalInitialData.set({
+      id: item.id,
+      categoryId: item.categoryId ?? null,
+      categoryName: item.categoryName,
+      amount: item.amount,
+    });
+    this.isGoalModalOpen.set(true);
+  }
+
+  deleteGoal(id: string): void {
+    const confirmed = window.confirm('Deseja realmente excluir esta meta?');
+    if (!confirmed) return;
+
+    this.invoiceApi.deleteGoal(id).subscribe({
+      next: () => {
+        this.loadGoals();
+        this.loadDashboard();
+      },
+      error: () => alert('Falha ao excluir meta.'),
+    });
+  }
+
+  copyPreviousMonthGoals(): void {
+    const [year, month] = this.goalsPeriod().split('-').map(Number);
+    const confirmed = window.confirm(
+      'Deseja copiar as metas definidas no mês anterior para este mês?',
+    );
+    if (!confirmed) return;
+
+    this.invoiceApi.copyPreviousMonthGoals(year, month).subscribe({
+      next: (res) => {
+        this.loadGoals();
+        this.loadDashboard();
+        alert(`Metas copiadas com sucesso! (${res.copied} meta(s) copiada(s))`);
+      },
+      error: (err) => {
+        alert(
+          err?.error?.detail ??
+            err?.error?.Detail ??
+            'Nenhuma meta encontrada no mês anterior para copiar.',
+        );
+      },
+    });
+  }
+
+  handleGoalModalSave(event: GoalModalSaveEvent): void {
+    if (event.id) {
+      this.invoiceApi.updateGoal(event.id, event.amount).subscribe({
+        next: () => {
+          this.isGoalModalOpen.set(false);
+          this.loadGoals();
+          this.loadDashboard();
+        },
+        error: (err) => alert(err?.error?.detail ?? 'Erro ao atualizar meta.'),
+      });
+    } else {
+      const [year, month] = this.goalsPeriod().split('-').map(Number);
+      this.invoiceApi
+        .saveGoal({
+          year,
+          month,
+          categoryId: event.categoryId || null,
+          amount: event.amount,
+          repeatNextMonths: event.repeatNextMonths,
+        })
+        .subscribe({
+          next: () => {
+            this.isGoalModalOpen.set(false);
+            this.loadGoals();
+            this.loadDashboard();
+          },
+          error: (err) => alert(err?.error?.detail ?? 'Erro ao salvar meta.'),
+        });
+    }
+  }
+
+  closeGoalModal(): void {
+    this.isGoalModalOpen.set(false);
+    this.goalModalInitialData.set(null);
+  }
+
+  goToCategorization(): void {
+    this.navigatePage('invoices');
+    this.transactionQuickFilter.set('outros');
   }
 
   changeDashboardPeriod(value: string): void {
@@ -1133,6 +1334,9 @@ export class App implements OnInit, AfterViewChecked, OnDestroy {
       window.location.pathname.endsWith(path),
     )?.[0] ?? 'dashboard') as Page;
     this.activePage.set(page);
+    if (page === 'goals') {
+      this.loadGoals();
+    }
   }
 
   private readStoredUser(): User | null {

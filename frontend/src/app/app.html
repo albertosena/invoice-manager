@@ -203,6 +203,20 @@
           </button>
           <button
             type="button"
+            [class.active]="activePage() === 'goals'"
+            (click)="navigatePage('goals')"
+          >
+            <span aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="6"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+            </span>
+            <strong>Metas</strong>
+          </button>
+          <button
+            type="button"
             [class.active]="activePage() === 'invoices'"
             (click)="navigatePage('invoices')"
           >
@@ -355,93 +369,145 @@
 
         <!-- DASHBOARD VIEW -->
         @if (activePage() === 'dashboard') {
-          <section class="summary-grid">
-            <article class="metric-card metric-spent">
-              <div class="metric-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="1" x2="12" y2="23"/>
-                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                </svg>
+          <section class="summary-grid dashboard-top-cards">
+            <!-- Card 1: Gasto líquido no mês (Hero) -->
+            <article class="metric-card metric-card-hero">
+              <div class="metric-card-header">
+                <div class="metric-icon hero-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="20" height="14" x="2" y="5" rx="2"/>
+                    <line x1="2" y1="10" x2="22" y2="10"/>
+                  </svg>
+                </div>
+                <span class="metric-label">Gasto líquido no mês</span>
               </div>
-              <span class="metric-label">Total gasto</span>
-              <strong class="metric-value">{{ formatCurrency(monthlySummary()?.totalSpent ?? 0) }}</strong>
-              @if (monthComparison()) {
-                <small
-                  class="metric-trend"
-                  [class.up]="metricDelta('totalSpent') > 0"
-                  [class.down]="metricDelta('totalSpent') < 0"
-                >
-                  <span aria-hidden="true">{{ trendIcon(metricDelta('totalSpent')) }}</span>
-                  {{ formatSignedCurrency(metricDelta('totalSpent')) }} em relação ao mês anterior
-                </small>
-              }
-            </article>
-
-            <article class="metric-card metric-credit">
-              <div class="metric-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                  <polyline points="17 6 23 6 23 12"/>
-                </svg>
+              <strong class="metric-value hero-value">{{ formatCurrency(dashboardNetSpent()) }}</strong>
+              <div class="hero-breakdown">
+                <span class="breakdown-item purchases">
+                  <span class="dot-indicator debit-dot" aria-hidden="true"></span>
+                  Compras: {{ formatCurrency(dashboardDebits()) }}
+                </span>
+                <span class="breakdown-separator" aria-hidden="true">•</span>
+                <span class="breakdown-item credits">
+                  <span class="dot-indicator credit-dot" aria-hidden="true"></span>
+                  Créditos: {{ formatCurrency(dashboardCredits()) }}
+                </span>
               </div>
-              <span class="metric-label">Créditos</span>
-              <strong class="metric-value">{{ formatCurrency(monthlySummary()?.totalCredits ?? 0) }}</strong>
-              @if (monthComparison()) {
-                <small
-                  class="metric-trend"
-                  [class.up]="metricDelta('totalCredits') > 0"
-                  [class.down]="metricDelta('totalCredits') < 0"
-                >
-                  <span aria-hidden="true">{{ trendIcon(metricDelta('totalCredits')) }}</span>
-                  {{ formatSignedCurrency(metricDelta('totalCredits')) }} em relação ao mês anterior
-                </small>
-              }
-            </article>
-
-            <article class="metric-card metric-net">
-              <div class="metric-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect width="20" height="14" x="2" y="5" rx="2"/>
-                  <line x1="2" y1="10" x2="22" y2="10"/>
-                </svg>
-              </div>
-              <span class="metric-label">Líquido</span>
-              <strong class="metric-value">{{ formatCurrency(monthlySummary()?.netAmount ?? 0) }}</strong>
-              @if (monthComparison()) {
+              @if (monthComparison() && (monthComparison()!.previous.transactionCount > 0 || monthComparison()!.previous.netAmount !== 0)) {
                 <small
                   class="metric-trend"
                   [class.up]="metricDelta('netAmount') > 0"
                   [class.down]="metricDelta('netAmount') < 0"
                 >
                   <span aria-hidden="true">{{ trendIcon(metricDelta('netAmount')) }}</span>
-                  {{ formatSignedCurrency(metricDelta('netAmount')) }} em relação ao mês anterior
+                  {{ formatSignedCurrency(metricDelta('netAmount')) }} vs mês anterior
                 </small>
               }
             </article>
 
-            <article class="metric-card">
-              <div class="metric-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="8" y1="6" x2="21" y2="6"/>
-                  <line x1="8" y1="12" x2="21" y2="12"/>
-                  <line x1="8" y1="18" x2="21" y2="18"/>
-                  <line x1="3" y1="6" x2="3.01" y2="6"/>
-                  <line x1="3" y1="12" x2="3.01" y2="12"/>
-                  <line x1="3" y1="18" x2="3.01" y2="18"/>
-                </svg>
+            <!-- Card 2: Meta mensal -->
+            <article class="metric-card metric-card-goal">
+              <div class="metric-card-header">
+                <div class="metric-icon goal-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="6"/>
+                    <circle cx="12" cy="12" r="2"/>
+                  </svg>
+                </div>
+                <span class="metric-label">Meta mensal</span>
+                @if (dashboardGoal() > 0) {
+                  <app-goal-status-badge [status]="dashboardGoalStatus()"></app-goal-status-badge>
+                }
               </div>
-              <span class="metric-label">Lançamentos</span>
-              <strong class="metric-value">{{ monthlySummary()?.transactionCount ?? 0 }}</strong>
-              @if (monthComparison()) {
-                <small
-                  class="metric-trend"
-                  [class.up]="metricDelta('transactionCount') > 0"
-                  [class.down]="metricDelta('transactionCount') < 0"
-                >
-                  <span aria-hidden="true">{{ trendIcon(metricDelta('transactionCount')) }}</span>
-                  {{ formatSignedNumber(metricDelta('transactionCount')) }} em relação ao mês anterior
-                </small>
+
+              @if (dashboardGoal() > 0) {
+                <div class="goal-amounts-row">
+                  <div class="goal-numbers">
+                    <strong class="metric-value">{{ formatCurrency(dashboardNetSpent()) }}</strong>
+                    <span class="goal-total-text">de {{ formatCurrency(dashboardGoal()) }}</span>
+                  </div>
+                </div>
+
+                <div class="goal-progress-section">
+                  <app-utilization-bar
+                    [percentage]="dashboardGoalPercentage()"
+                    [status]="dashboardGoalStatus()"
+                    [showLabel]="true"
+                    height="8px"
+                  ></app-utilization-bar>
+                </div>
+
+                <div class="goal-footer-info">
+                  @if (dashboardGoalAvailable() >= 0) {
+                    <span class="available-text text-positive">
+                      {{ formatCurrency(dashboardGoalAvailable()) }} disponível
+                    </span>
+                  } @else {
+                    <span class="available-text text-negative">
+                      Ultrapassada em {{ formatCurrency(-dashboardGoalAvailable()) }}
+                    </span>
+                  }
+                  <button type="button" class="card-link-action" (click)="navigatePage('goals')">
+                    Ver metas →
+                  </button>
+                </div>
+              } @else {
+                <div class="card-empty-state">
+                  <p class="empty-state-copy">Nenhuma meta definida para este mês.</p>
+                  <button
+                    type="button"
+                    class="btn-card-action"
+                    (click)="openCreateOverallGoalFromDashboard()"
+                  >
+                    + Criar meta
+                  </button>
+                </div>
               }
+            </article>
+
+            <!-- Card 3: Lançamentos -->
+            <article class="metric-card metric-card-transactions">
+              <div class="metric-card-header">
+                <div class="metric-icon tx-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="8" y1="6" x2="21" y2="6"/>
+                    <line x1="8" y1="12" x2="21" y2="12"/>
+                    <line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="3" y1="6" x2="3.01" y2="6"/>
+                    <line x1="3" y1="12" x2="3.01" y2="12"/>
+                    <line x1="3" y1="18" x2="3.01" y2="18"/>
+                  </svg>
+                </div>
+                <span class="metric-label">Lançamentos</span>
+                <span class="categorized-badge" [class.badge-complete]="dashboardUncategorizedCount() === 0 && (monthlySummary()?.transactionCount ?? 0) > 0">
+                  {{ dashboardCategorizedPercentage() }}% classificados
+                </span>
+              </div>
+
+              <strong class="metric-value">{{ monthlySummary()?.transactionCount ?? 0 }} <small class="unit-label">lançamentos</small></strong>
+
+              <div class="tx-breakdown">
+                <span class="tx-stat categorized-stat">
+                  <strong>{{ dashboardCategorizedCount() }}</strong> categorizados
+                </span>
+                <span class="breakdown-separator" aria-hidden="true">•</span>
+                <span class="tx-stat uncategorized-stat" [class.has-uncategorized]="dashboardUncategorizedCount() > 0">
+                  <strong>{{ dashboardUncategorizedCount() }}</strong> sem categoria
+                </span>
+              </div>
+
+              <div class="tx-footer-action">
+                @if (dashboardUncategorizedCount() > 0) {
+                  <button type="button" class="btn-categorize-now" (click)="goToCategorization()">
+                    Categorizar agora ({{ dashboardUncategorizedCount() }}) →
+                  </button>
+                } @else {
+                  <button type="button" class="btn-categorize-now secondary" (click)="navigatePage('invoices')">
+                    Ver todos os lançamentos →
+                  </button>
+                }
+              </div>
             </article>
           </section>
 
@@ -453,21 +519,6 @@
                   <p>{{ dashboardPeriodLabel() }} vs {{ previousDashboardPeriodLabel() }}</p>
                 </div>
               </div>
-
-              @if (othersInsight(); as insight) {
-                <div class="insight-warning">
-                  <div class="insight-warning-copy">
-                    <span class="warning-icon" aria-hidden="true">⚠️</span>
-                    <div>
-                      <strong>{{ insight.count }} lançamentos ainda estão em Outros.</strong>
-                      <p>Crie regras para melhorar sua categorização.</p>
-                    </div>
-                  </div>
-                  <button type="button" class="primary-action btn-sm" (click)="navigatePage('invoices')">
-                    Categorizar lançamentos
-                  </button>
-                </div>
-              }
 
               @if (categoryInsights().length) {
                 <div class="category-insights" aria-label="Destaques por categoria">
@@ -1110,6 +1161,261 @@
             </section>
           </section>
         }
+
+        <!-- GOALS VIEW -->
+        @if (activePage() === 'goals') {
+          <section class="goals-page">
+            <!-- Header bar with month selector and quick actions -->
+            <header class="goals-header-bar">
+              <div class="goals-period-block">
+                <span class="period-label">Mês de referência:</span>
+                <div class="period-select">
+                  <select [value]="goalsPeriod()" (change)="changeGoalsPeriod($any($event.target).value)">
+                    @for (option of periodOptions(); track option) {
+                      <option [value]="option">{{ formatPeriodLabel(option) }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <div class="goals-action-buttons">
+                <button type="button" class="ghost-button" (click)="copyPreviousMonthGoals()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-icon">
+                    <rect width="13" height="13" x="9" y="9" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copiar do mês anterior
+                </button>
+                <button type="button" class="ghost-button" (click)="openCreateOverallGoal()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-icon">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="6"/>
+                    <circle cx="12" cy="12" r="2"/>
+                  </svg>
+                  Definir meta geral
+                </button>
+                <button type="button" class="primary-action" (click)="openCreateCategoryGoal()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-svg-icon">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Nova meta por categoria
+                </button>
+              </div>
+            </header>
+
+            <!-- Monthly Overview Panel -->
+            @if (goalsData(); as gd) {
+              <section class="panel goals-overview-panel">
+                <div class="panel-title">
+                  <div>
+                    <div class="eyebrow">Acompanhamento Mensal</div>
+                    <h2>Visão Geral de Metas — {{ goalsPeriodLabel() }}</h2>
+                  </div>
+                  <app-goal-status-badge [status]="gd.summary.status"></app-goal-status-badge>
+                </div>
+
+                <div class="overview-metrics-grid">
+                  <div class="overview-metric-card">
+                    <span class="overview-label">Meta Geral</span>
+                    <strong class="overview-value">
+                      {{ gd.summary.goalAmount > 0 ? formatCurrency(gd.summary.goalAmount) : 'Não definida' }}
+                    </strong>
+                    @if (gd.summary.goalAmount > 0) {
+                      <button type="button" class="inline-edit-btn" (click)="openCreateOverallGoal()">Editar meta</button>
+                    } @else {
+                      <button type="button" class="inline-edit-btn" (click)="openCreateOverallGoal()">+ Definir meta</button>
+                    }
+                  </div>
+
+                  <div class="overview-metric-card">
+                    <span class="overview-label">Gasto Líquido</span>
+                    <strong class="overview-value">{{ formatCurrency(gd.summary.netSpent) }}</strong>
+                    <small class="overview-hint">
+                      Compras: {{ formatCurrency(gd.summary.grossSpent) }} | Créditos: {{ formatCurrency(gd.summary.credits) }}
+                    </small>
+                  </div>
+
+                  <div class="overview-metric-card">
+                    <span class="overview-label">Saldo Disponível</span>
+                    <strong
+                      class="overview-value"
+                      [class.text-danger]="gd.summary.available < 0"
+                      [class.text-success]="gd.summary.available >= 0 && gd.summary.goalAmount > 0"
+                    >
+                      {{ gd.summary.goalAmount > 0 ? formatCurrency(gd.summary.available) : '—' }}
+                    </strong>
+                    <small class="overview-hint">
+                      @if (gd.summary.goalAmount > 0) {
+                        {{ gd.summary.available >= 0 ? 'Dentro do orçamento' : 'Orçamento estourado' }}
+                      } @else {
+                        Defina uma meta geral
+                      }
+                    </small>
+                  </div>
+
+                  <div class="overview-metric-card progress-metric-card">
+                    <span class="overview-label">% Utilizado</span>
+                    <div class="overview-progress-block">
+                      <strong class="overview-value">{{ gd.summary.percentageUsed }}%</strong>
+                      <app-utilization-bar
+                        [percentage]="gd.summary.percentageUsed"
+                        [status]="gd.summary.status"
+                        height="10px"
+                      ></app-utilization-bar>
+                    </div>
+                    <small class="overview-hint">
+                      Ritmo de consumo do orçamento
+                    </small>
+                  </div>
+
+                  <div class="overview-metric-card">
+                    <span class="overview-label">Projeção Fim do Mês</span>
+                    <strong class="overview-value">{{ formatCurrency(gd.summary.projection) }}</strong>
+                    <small class="overview-hint">
+                      Ritmo diário projetado
+                    </small>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Category Goals Section -->
+              <section class="panel category-goals-panel">
+                <div class="panel-title">
+                  <div>
+                    <div class="eyebrow">Limites Específicos</div>
+                    <h2>Metas por Categoria</h2>
+                  </div>
+                  <button type="button" class="ghost-button btn-sm" (click)="openCreateCategoryGoal()">
+                    + Adicionar categoria
+                  </button>
+                </div>
+
+                @if (gd.categoryGoals.length > 0) {
+                  <div class="category-goals-grid">
+                    @for (cg of gd.categoryGoals; track cg.id) {
+                      <article class="category-goal-card">
+                        <header class="cat-goal-header">
+                          <div class="cat-info">
+                            <span class="cat-color-badge" [style.backgroundColor]="cg.categoryColor"></span>
+                            <div>
+                              <strong>{{ cg.categoryName }}</strong>
+                              <small>{{ formatCurrency(cg.spent) }} de {{ formatCurrency(cg.amount) }}</small>
+                            </div>
+                          </div>
+                          <app-goal-status-badge [status]="cg.status"></app-goal-status-badge>
+                        </header>
+
+                        <div class="cat-goal-progress">
+                          <app-utilization-bar
+                            [percentage]="cg.percentage"
+                            [status]="cg.status"
+                            [showLabel]="true"
+                            height="8px"
+                          ></app-utilization-bar>
+                        </div>
+
+                        <footer class="cat-goal-footer">
+                          <div class="cat-available-info">
+                            @if (cg.available >= 0) {
+                              <span class="text-positive">{{ formatCurrency(cg.available) }} disponível</span>
+                            } @else {
+                              <span class="text-negative">Ultrapassada em {{ formatCurrency(-cg.available) }}</span>
+                            }
+                          </div>
+                          <div class="cat-actions">
+                            <button type="button" class="btn-icon-action" (click)="openEditGoal(cg)" title="Editar meta">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                            <button type="button" class="btn-icon-action btn-delete" (click)="deleteGoal(cg.id)" title="Excluir meta">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </footer>
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <div class="goals-empty-state">
+                    <div class="empty-icon-wrapper" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <circle cx="12" cy="12" r="6"/>
+                        <circle cx="12" cy="12" r="2"/>
+                      </svg>
+                    </div>
+                    <h3>Nenhuma meta por categoria definida para este mês.</h3>
+                    <p>Adicione limites para categorias como Alimentação, Transporte, Lazer e acompanhe seus gastos de perto.</p>
+                    <button type="button" class="primary-action" (click)="openCreateCategoryGoal()">
+                      + Adicionar meta por categoria
+                    </button>
+                  </div>
+                }
+              </section>
+
+              <!-- History Section -->
+              <section class="panel goals-history-panel">
+                <div class="panel-title">
+                  <div>
+                    <div class="eyebrow">Evolução Histórica</div>
+                    <h2>Histórico dos Últimos Meses</h2>
+                  </div>
+                </div>
+
+                @if (gd.history.length > 0) {
+                  <div class="history-table-wrapper">
+                    <table class="history-table">
+                      <thead>
+                        <tr>
+                          <th>Mês / Ano</th>
+                          <th class="text-right">Meta Estipulada</th>
+                          <th class="text-right">Gasto Real</th>
+                          <th class="text-right">Diferença</th>
+                          <th class="text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (h of gd.history; track (h.year + '-' + h.month)) {
+                          <tr>
+                            <td class="history-period-col">
+                              <strong>{{ formatPeriodLabel(h.year + '-' + (h.month < 10 ? '0' + h.month : h.month)) }}</strong>
+                            </td>
+                            <td class="text-right tabular-nums">
+                              {{ h.goalAmount > 0 ? formatCurrency(h.goalAmount) : '—' }}
+                            </td>
+                            <td class="text-right tabular-nums">
+                              {{ formatCurrency(h.netSpent) }}
+                            </td>
+                            <td class="text-right tabular-nums" [class.text-positive]="h.difference >= 0 && h.goalAmount > 0" [class.text-negative]="h.difference < 0 && h.goalAmount > 0">
+                              {{ h.goalAmount > 0 ? formatSignedCurrency(h.difference) : '—' }}
+                            </td>
+                            <td class="text-center">
+                              @if (h.status === 'cumprida') {
+                                <span class="history-status-badge badge-cumprida">Cumprida</span>
+                              } @else if (h.status === 'ultrapassada') {
+                                <span class="history-status-badge badge-ultrapassada">Ultrapassada</span>
+                              } @else {
+                                <span class="history-status-badge badge-sem-meta">Sem meta</span>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <p class="history-empty-message">Nenhum histórico disponível para períodos anteriores.</p>
+                }
+              </section>
+            }
+          </section>
+        }
       </section>
 
       <!-- Mobile Bottom Navigation Bar -->
@@ -1126,6 +1432,18 @@
             <rect width="7" height="5" x="3" y="16" rx="1"/>
           </svg>
           <span>Dashboard</span>
+        </button>
+        <button
+          type="button"
+          [class.active]="activePage() === 'goals'"
+          (click)="navigatePage('goals')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="6"/>
+            <circle cx="12" cy="12" r="2"/>
+          </svg>
+          <span>Metas</span>
         </button>
         <button
           type="button"
@@ -1444,5 +1762,16 @@
         </section>
       </div>
     }
+
+    <!-- Modal de Metas Mensais -->
+    <app-goal-modal
+      [isOpen]="isGoalModalOpen()"
+      [mode]="goalModalMode()"
+      [categories]="categories()"
+      [initialData]="goalModalInitialData()"
+      [existingCategoryIds]="goalsExistingCategoryIds()"
+      (save)="handleGoalModalSave($event)"
+      (close)="closeGoalModal()"
+    ></app-goal-modal>
   }
 </main>

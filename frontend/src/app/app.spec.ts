@@ -50,6 +50,7 @@ describe('App', () => {
       'createCategory', 'updateCategory', 'deleteCategory', 'getCategorizationRules',
       'createRule', 'updateRule', 'deleteRule', 'updateTransactionCategory', 'bulkCategorize',
       'getMonthlySummary', 'getCategorySummary', 'getMonthComparison',
+      'getGoals', 'saveGoal', 'updateGoal', 'deleteGoal', 'copyPreviousMonthGoals',
     ]);
     auth.me.and.returnValue(of(user));
     api.getInvoices.and.returnValue(of([]));
@@ -65,6 +66,27 @@ describe('App', () => {
       previous: { totalSpent: 0, totalCredits: 0, netAmount: 0, transactionCount: 0 },
       difference: 0, percentage: null,
     }));
+    api.getGoals.and.returnValue(of({
+      year: 2026,
+      month: 6,
+      overallGoal: null,
+      summary: {
+        grossSpent: 0,
+        credits: 0,
+        netSpent: 0,
+        goalAmount: 0,
+        available: 0,
+        percentageUsed: 0,
+        projection: 0,
+        status: 'no_goal',
+      },
+      categoryGoals: [],
+      history: [],
+    }));
+    api.saveGoal.and.returnValue(of({ success: true, count: 1 }));
+    api.updateGoal.and.returnValue(of({} as any));
+    api.deleteGoal.and.returnValue(of(undefined as any));
+    api.copyPreviousMonthGoals.and.returnValue(of({ success: true, copied: 2 }));
 
     await TestBed.configureTestingModule({
       imports: [App],
@@ -80,7 +102,7 @@ describe('App', () => {
 
   afterEach(() => localStorage.clear());
 
-  function authenticate(page: 'dashboard' | 'invoices' | 'categories' = 'dashboard'): void {
+  function authenticate(page: 'dashboard' | 'invoices' | 'goals' | 'categories' = 'dashboard'): void {
     component.token.set('token');
     component.currentUser.set(user);
     component.activePage.set(page);
@@ -93,18 +115,30 @@ describe('App', () => {
   describe('dashboard', () => {
     beforeEach(() => authenticate());
 
-    it('renders all KPI cards with the monthly summary values', () => {
+    it('renders the 3 main financial cards with the monthly summary values', () => {
       component.monthlySummary.set({
-        totalSpent: 1250.5, totalCredits: -200, netAmount: 1050.5, transactionCount: 8,
+        totalSpent: 1250.5,
+        totalCredits: -200,
+        netAmount: 1050.5,
+        transactionCount: 8,
+        monthlyGoal: 3000,
+        categorizedCount: 6,
+        uncategorizedCount: 2,
+        categorizedPercentage: 75,
       });
       fixture.detectChanges();
-      const cards = fixture.nativeElement.querySelectorAll('.summary-grid .metric-card');
-      expect(cards.length).toBe(4);
-      expect(text()).toContain('Total gasto');
-      expect(text()).toContain('R$ 1.250,50');
-      expect(text()).toContain('-R$ 200,00');
+      const cards = fixture.nativeElement.querySelectorAll('.dashboard-top-cards .metric-card');
+      expect(cards.length).toBe(3);
+      expect(text()).toContain('Gasto líquido no mês');
       expect(text()).toContain('R$ 1.050,50');
-      expect(cards[3].textContent).toContain('8');
+      expect(text()).toContain('Compras: R$ 1.250,50');
+      expect(text()).toContain('Créditos: -R$ 200,00');
+      expect(text()).toContain('Meta mensal');
+      expect(text()).toContain('de R$ 3.000,00');
+      expect(text()).toContain('Lançamentos');
+      expect(cards[2].textContent).toContain('8');
+      expect(text()).toContain('6 categorizados');
+      expect(text()).toContain('2 sem categoria');
     });
 
     it('calculates current/previous category shares and increase, decrease, and neutral trends', () => {
@@ -456,6 +490,99 @@ describe('App', () => {
       history.replaceState(null, '', '/unknown');
       window.dispatchEvent(new PopStateEvent('popstate'));
       expect(component.activePage()).toBe('dashboard');
+    });
+  });
+
+  describe('goals module', () => {
+    beforeEach(() => {
+      authenticate('goals');
+    });
+
+    it('loads and displays goals overview, category limits, and history', () => {
+      component.goalsData.set({
+        year: 2026,
+        month: 6,
+        overallGoal: { id: 'goal-1', amount: 5000 },
+        summary: {
+          grossSpent: 2500,
+          credits: -300,
+          netSpent: 2200,
+          goalAmount: 5000,
+          available: 2800,
+          percentageUsed: 44,
+          projection: 3600,
+          status: 'normal',
+        },
+        categoryGoals: [
+          {
+            id: 'cg-1',
+            categoryId: 'food',
+            categoryName: 'Alimentação',
+            categoryColor: '#ff0000',
+            categoryIcon: 'cart',
+            amount: 1500,
+            spent: 800,
+            available: 700,
+            percentage: 53.3,
+            status: 'normal',
+          },
+        ],
+        history: [
+          {
+            year: 2026,
+            month: 5,
+            goalAmount: 5000,
+            netSpent: 4200,
+            difference: 800,
+            status: 'cumprida',
+          },
+        ],
+      });
+      fixture.detectChanges();
+
+      expect(text()).toContain('Visão Geral de Metas');
+      expect(text()).toContain('R$ 5.000,00');
+      expect(text()).toContain('R$ 2.200,00');
+      expect(text()).toContain('R$ 2.800,00');
+      expect(text()).toContain('44%');
+      expect(text()).toContain('Alimentação');
+      expect(text()).toContain('R$ 800,00 de R$ 1.500,00');
+      expect(text()).toContain('R$ 700,00 disponível');
+      expect(text()).toContain('Histórico dos Últimos Meses');
+      expect(text()).toContain('Cumprida');
+    });
+
+    it('opens goal modal for overall goal creation and saves', () => {
+      component.openCreateOverallGoal();
+      expect(component.isGoalModalOpen()).toBeTrue();
+      expect(component.goalModalMode()).toBe('overall');
+
+      component.handleGoalModalSave({
+        categoryId: null,
+        amount: 4000,
+        repeatNextMonths: 3,
+      });
+      expect(api.saveGoal).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          amount: 4000,
+          repeatNextMonths: 3,
+        }),
+      );
+      expect(component.isGoalModalOpen()).toBeFalse();
+    });
+
+    it('copies goals from previous month', () => {
+      spyOn(window, 'confirm').and.returnValue(true);
+      spyOn(window, 'alert');
+      component.copyPreviousMonthGoals();
+      expect(api.copyPreviousMonthGoals).toHaveBeenCalled();
+      expect(window.alert).toHaveBeenCalledWith(jasmine.stringMatching(/sucesso/i));
+    });
+
+    it('deletes a goal after confirmation', () => {
+      spyOn(window, 'confirm').and.returnValue(true);
+      component.deleteGoal('cg-1');
+      expect(api.deleteGoal).toHaveBeenCalledWith('cg-1');
     });
   });
 });
