@@ -330,7 +330,7 @@
     display: block;
     font-size: 0.95rem;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--text-main, #0f172a);
     letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
@@ -389,8 +389,8 @@
     }
 
     &:hover {
-      background: #f8fafc;
-      color: #0f172a;
+      background: var(--bg-hover, #f8fafc);
+      color: var(--text-main, #0f172a);
 
       span {
         color: var(--brand-primary, #4f46e5);
@@ -446,7 +446,7 @@
   strong {
     display: block;
     font-size: 0.78rem;
-    color: #0f172a;
+    color: var(--text-main, #0f172a);
     font-weight: 700;
   }
 }
@@ -479,7 +479,7 @@
       display: block;
       font-size: 0.82rem;
       font-weight: 700;
-      color: #0f172a;
+      color: var(--text-main, #0f172a);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -575,7 +575,7 @@
     margin: 0;
     font-size: 1.55rem;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--text-main, #0f172a);
     letter-spacing: -0.02em;
   }
 
@@ -627,7 +627,7 @@
     background: transparent;
     font-size: 0.85rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-main, #0f172a);
     cursor: pointer;
     outline: none;
   }
@@ -892,7 +892,7 @@
   .metric-value {
     font-size: 1.45rem;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--text-main, #0f172a);
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
   }
@@ -945,7 +945,7 @@
 
     .hero-value {
       font-size: 1.75rem;
-      color: #0f172a;
+      color: var(--text-main, #0f172a);
       margin: 4px 0 8px;
     }
 
@@ -1096,9 +1096,9 @@
 
       .btn-card-action {
         padding: 6px 14px;
-        background: #f1f5f9;
-        color: #0f172a;
-        border: 1px solid #cbd5e1;
+        background: var(--bg-card-muted, #f1f5f9);
+        color: var(--text-main, #0f172a);
+        border: 1px solid var(--border-color, #cbd5e1);
         border-radius: 8px;
         font-size: 0.78rem;
         font-weight: 700;
@@ -1106,8 +1106,8 @@
         transition: all 0.15s;
 
         &:hover {
-          background: #e2e8f0;
-          border-color: #94a3b8;
+          background: var(--bg-hover, #e2e8f0);
+          border-color: var(--border-hover, #94a3b8);
         }
       }
     }
@@ -1119,8 +1119,9 @@
       font-weight: 700;
       padding: 2px 8px;
       border-radius: 9999px;
-      background: #f1f5f9;
-      color: #475569;
+      background: var(--bg-card-muted, #f1f5f9);
+      color: var(--text-muted, #475569);
+      border: 1px solid var(--border-color, #e2e8f0);
 
       &.badge-complete {
         background: #ecfdf5;
@@ -1175,13 +1176,13 @@
         }
 
         &.secondary {
-          background: #f8fafc;
-          color: #475569;
-          border-color: #e2e8f0;
+          background: var(--bg-card-muted, #f8fafc);
+          color: var(--text-muted, #475569);
+          border-color: var(--border-color, #e2e8f0);
 
           &:hover {
-            background: #f1f5f9;
-            color: #0f172a;
+            background: var(--bg-hover, #f1f5f9);
+            color: var(--text-main, #0f172a);
           }
         }
       }
@@ -1263,7 +1264,7 @@
       .overview-value {
         font-size: 1.25rem;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--text-main, #0f172a);
         font-variant-numeric: tabular-nums;
       }
 
@@ -1344,7 +1345,7 @@
             display: block;
             font-size: 0.92rem;
             font-weight: 700;
-            color: #0f172a;
+            color: var(--text-main, #0f172a);
           }
 
           small {
@@ -1396,7 +1397,7 @@
 
             &:hover {
               background: #f1f5f9;
-              color: #0f172a;
+              color: var(--text-main, #0f172a);
               border-color: #e2e8f0;
             }
 
@@ -1438,7 +1439,7 @@
     h3 {
       font-size: 1.1rem;
       font-weight: 700;
-      color: #0f172a;
+      color: var(--text-main, #0f172a);
       margin: 0;
     }
 
@@ -1475,7 +1476,7 @@
     td {
       padding: 14px 24px;
       font-size: 0.85rem;
-      color: #1e293b;
+      color: var(--text-main, #1e293b);
       border-bottom: 1px solid #f1f5f9;
     }
 
@@ -1484,7 +1485,7 @@
     }
 
     .history-period-col strong {
-      color: #0f172a;
+      color: var(--text-main, #0f172a);
       font-weight: 700;
     }
 
@@ -1556,7 +1557,7 @@
       margin: 0;
       font-size: 1.05rem;
       font-weight: 800;
-      color: #0f172a;
+      color: var(--text-main, #0f172a);
     }
 
     p {
@@ -1734,7 +1735,7 @@
           .category-name-text {
             font-size: 0.98rem;
             font-weight: 800;
-            color: #0f172a;
+            color: var(--text-main, #0f172a);
             line-height: 1.2;
           }
 
@@ -1755,11 +1756,11 @@
           align-items: center;
           gap: 8px;
           font-size: 0.78rem;
-          color: #475569;
+          color: var(--text-muted, #475569);
           font-weight: 500;
 
           .category-count-text {
-            color: #475569;
+            color: var(--text-muted, #475569);
             font-weight: 500;
           }
 
@@ -1768,9 +1769,9 @@
             font-weight: 700;
             padding: 1px 7px;
             border-radius: 9999px;
-            background: #f1f5f9;
-            color: #334155;
-            border: 1px solid #e2e8f0;
+            background: var(--bg-subtle, #f1f5f9);
+            color: var(--text-muted, #334155);
+            border: 1px solid var(--border-color, #e2e8f0);
           }
         }
       }
@@ -1791,7 +1792,7 @@
         .category-total-num {
           font-size: 1.2rem;
           font-weight: 800;
-          color: #0f172a;
+          color: var(--text-main, #0f172a);
           letter-spacing: -0.02em;
         }
 
@@ -1829,11 +1830,11 @@
         align-items: center;
         gap: 6px;
         font-size: 0.76rem;
-        color: #64748b;
+        color: var(--text-muted, #64748b);
 
         .metric-note {
           b {
-            color: #334155;
+            color: var(--text-main, #334155);
             font-weight: 700;
           }
 
@@ -1852,7 +1853,7 @@
         }
 
         .metric-dot-sep {
-          color: #cbd5e1;
+          color: var(--border-color, #cbd5e1);
         }
       }
     }
@@ -1864,7 +1865,7 @@
     flex-direction: column;
     gap: 7px;
     padding-top: 10px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--border-color-subtle, #f1f5f9);
 
     .bar-comparison-row {
       display: grid;
@@ -1875,7 +1876,7 @@
       .bar-label {
         font-size: 0.72rem;
         font-weight: 700;
-        color: #64748b;
+        color: var(--text-muted, #64748b);
         text-transform: uppercase;
         letter-spacing: 0.03em;
       }
@@ -1886,7 +1887,7 @@
         .bar-track {
           height: 7px;
           border-radius: 9999px;
-          background: #e2e8f0;
+          background: var(--bg-subtle, #e2e8f0);
           overflow: hidden;
           position: relative;
 
@@ -1910,7 +1911,7 @@
       .bar-amount-value {
         font-size: 0.82rem;
         font-weight: 600;
-        color: #475569;
+        color: var(--text-muted, #475569);
         text-align: right;
 
         &.goal-val {
@@ -1921,14 +1922,14 @@
 
       &.is-current {
         .bar-label {
-          color: #1e293b;
+          color: var(--text-main, #1e293b);
           font-weight: 800;
         }
 
         .bar-amount-value {
           font-size: 0.85rem;
           font-weight: 800;
-          color: #0f172a;
+          color: var(--text-main, #0f172a);
         }
       }
     }
@@ -2006,7 +2007,7 @@
       strong {
         font-size: 0.88rem;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--text-main, #0f172a);
       }
 
       em {
@@ -2046,7 +2047,7 @@
       display: block;
       font-size: 0.95rem;
       font-weight: 800;
-      color: #0f172a;
+      color: var(--text-main, #0f172a);
     }
 
     small {
@@ -2194,7 +2195,7 @@
         display: block;
         font-size: 0.85rem;
         font-weight: 700;
-        color: #0f172a;
+        color: var(--text-main, #0f172a);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2297,7 +2298,7 @@
           h2 {
             font-size: 1.05rem;
             font-weight: 800;
-            color: #0f172a;
+            color: var(--text-main, #0f172a);
             margin: 0;
             line-height: 1.2;
           }
@@ -2556,7 +2557,7 @@
         display: block;
         font-size: 0.82rem;
         font-weight: 700;
-        color: #0f172a;
+        color: var(--text-main, #0f172a);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2622,7 +2623,7 @@
           h2 {
             font-size: 1.05rem;
             font-weight: 800;
-            color: #0f172a;
+            color: var(--text-main, #0f172a);
             margin: 0;
             line-height: 1.2;
           }
@@ -3004,7 +3005,7 @@
 
       strong {
         display: block;
-        color: #0f172a;
+        color: var(--text-main, #0f172a);
         font-weight: 700;
       }
 
@@ -3018,7 +3019,7 @@
     .money-cell {
       white-space: nowrap;
       font-weight: 800;
-      color: #0f172a;
+      color: var(--text-main, #0f172a);
 
       &.credit {
         color: #059669;
@@ -3984,6 +3985,74 @@
       border-color: #4a5b75;
       box-shadow: var(--shadow-md);
     }
+
+    .btn-card-action {
+      background: var(--bg-card-muted, #1e2636) !important;
+      color: var(--text-main, #e2e8f0) !important;
+      border: 1px solid var(--border-color, #374459) !important;
+
+      &:hover {
+        background: var(--bg-hover, #2d394e) !important;
+        border-color: #4a5b75 !important;
+        color: #ffffff !important;
+      }
+    }
+
+    .card-link-action {
+      color: #818cf8;
+
+      &:hover {
+        color: #a5b4fc;
+      }
+    }
+  }
+
+  .metric-card-transactions {
+    .categorized-badge {
+      background: var(--bg-subtle, #283346) !important;
+      color: var(--text-muted, #94a3b8) !important;
+      border: 1px solid var(--border-color, #374459) !important;
+
+      &.badge-complete {
+        background: rgba(16, 185, 129, 0.15) !important;
+        color: #34d399 !important;
+        border-color: rgba(16, 185, 129, 0.3) !important;
+      }
+    }
+
+    .tx-breakdown {
+      color: var(--text-muted, #94a3b8);
+
+      .categorized-stat strong {
+        color: var(--text-main, #e2e8f0);
+      }
+      .breakdown-separator {
+        color: var(--border-color, #374459);
+      }
+    }
+
+    .btn-categorize-now {
+      background: rgba(99, 102, 241, 0.16) !important;
+      color: #a5b4fc !important;
+      border: 1px solid rgba(99, 102, 241, 0.32) !important;
+
+      &:hover {
+        background: rgba(99, 102, 241, 0.26) !important;
+        color: #c7d2fe !important;
+        border-color: rgba(99, 102, 241, 0.45) !important;
+      }
+
+      &.secondary {
+        background: var(--bg-card-muted, #1e2636) !important;
+        color: var(--text-muted, #94a3b8) !important;
+        border-color: var(--border-color, #374459) !important;
+
+        &:hover {
+          background: var(--bg-hover, #2d394e) !important;
+          color: var(--text-main, #e2e8f0) !important;
+        }
+      }
+    }
   }
 
   .dashboard-top-cards {
@@ -4059,37 +4128,70 @@
 
     .category-card-top {
       .category-name-text {
-        color: var(--text-main, #e2e8f0);
+        color: var(--text-main, #e2e8f0) !important;
       }
+
+      .category-tag-pill {
+        background: rgba(99, 102, 241, 0.18) !important;
+        color: #a5b4fc !important;
+        border: 1px solid rgba(99, 102, 241, 0.3) !important;
+      }
+
       .category-meta-line {
         color: var(--text-muted, #94a3b8);
+
         .category-count-text {
           color: var(--text-muted, #94a3b8);
         }
+
         .category-share-pill {
-          background: var(--bg-subtle, #283346);
-          border-color: var(--border-color, #374459);
-          color: #cbd5e1;
+          background: var(--bg-subtle, #283346) !important;
+          border: 1px solid var(--border-color, #374459) !important;
+          color: #cbd5e1 !important;
         }
       }
 
-      .category-total-num {
-        color: var(--text-main, #e2e8f0);
-      }
-
-      .category-secondary-metrics {
-        color: var(--text-muted, #94a3b8);
-        .metric-note b {
-          color: #cbd5e1;
+      .category-card-metrics {
+        .category-total-num {
+          color: var(--text-main, #e2e8f0) !important;
         }
-        .metric-dot-sep {
-          color: #374459;
+
+        .category-delta-pill {
+          &.up {
+            background: rgba(239, 68, 68, 0.15) !important;
+            color: #f87171 !important;
+            border: 1px solid rgba(239, 68, 68, 0.28) !important;
+          }
+
+          &.down {
+            background: rgba(16, 185, 129, 0.15) !important;
+            color: #34d399 !important;
+            border: 1px solid rgba(16, 185, 129, 0.28) !important;
+          }
+
+          &.flat {
+            background: var(--bg-subtle, #283346) !important;
+            color: var(--text-muted, #94a3b8) !important;
+            border: 1px solid var(--border-color, #374459) !important;
+          }
+        }
+
+        .category-secondary-metrics {
+          color: var(--text-muted, #94a3b8);
+
+          .metric-note b {
+            color: #cbd5e1 !important;
+          }
+
+          .metric-dot-sep {
+            color: #374459;
+          }
         }
       }
     }
 
     .category-card-bars {
-      border-top-color: var(--border-color, #374459);
+      border-top-color: var(--border-color-subtle, #2b3648);
 
       .bar-comparison-row {
         .bar-label {
@@ -4109,7 +4211,7 @@
             color: var(--text-main, #e2e8f0);
           }
           .bar-amount-value {
-            color: var(--text-main, #e2e8f0);
+            color: var(--text-main, #e2e8f0) !important;
           }
         }
 
@@ -4152,16 +4254,16 @@
           color: var(--text-muted, #94a3b8);
         }
         em {
-          background: var(--bg-subtle, #283346);
-          color: var(--text-muted, #94a3b8);
+          background: var(--bg-subtle, #283346) !important;
+          color: var(--text-muted, #94a3b8) !important;
 
           &.status-completed {
-            background: rgba(16, 185, 129, 0.16);
-            color: #34d399;
+            background: rgba(16, 185, 129, 0.16) !important;
+            color: #34d399 !important;
           }
           &.status-failed {
-            background: rgba(244, 63, 94, 0.16);
-            color: #f87171;
+            background: rgba(244, 63, 94, 0.16) !important;
+            color: #f87171 !important;
           }
         }
       }
