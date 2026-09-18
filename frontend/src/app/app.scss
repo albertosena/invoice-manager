@@ -620,6 +620,7 @@
   transition: all 0.15s ease;
   position: relative;
   overflow: hidden;
+  user-select: none;
 
   input[type="file"] {
     position: absolute;
@@ -628,9 +629,26 @@
     cursor: pointer;
   }
 
-  .button-icon svg {
-    width: 16px;
-    height: 16px;
+  .button-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    &.itau-icon svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    &.nubank-icon svg {
+      width: 18px;
+      height: 18px;
+    }
   }
 
   &:hover:not(.disabled) {
@@ -638,12 +656,28 @@
     transform: translateY(-1px);
   }
 
-  &.csv-button {
-    background: linear-gradient(135deg, #820ad1 0%, #6d08b0 100%);
-    box-shadow: 0 2px 8px rgba(130, 10, 209, 0.25);
+  &:active:not(.disabled) {
+    transform: translateY(0);
+  }
+
+  &.itau-button {
+    background: linear-gradient(135deg, #ec7000 0%, #d45d00 100%);
+    box-shadow: 0 2px 8px rgba(236, 112, 0, 0.3);
 
     &:hover:not(.disabled) {
-      box-shadow: 0 4px 14px rgba(130, 10, 209, 0.35);
+      background: linear-gradient(135deg, #f57805 0%, #df6400 100%);
+      box-shadow: 0 4px 14px rgba(236, 112, 0, 0.45);
+    }
+  }
+
+  &.nubank-button,
+  &.csv-button {
+    background: linear-gradient(135deg, #820ad1 0%, #6d08b0 100%);
+    box-shadow: 0 2px 8px rgba(130, 10, 209, 0.3);
+
+    &:hover:not(.disabled) {
+      background: linear-gradient(135deg, #8f17e0 0%, #7609bd 100%);
+      box-shadow: 0 4px 14px rgba(130, 10, 209, 0.45);
     }
   }
 
